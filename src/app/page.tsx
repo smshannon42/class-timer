@@ -30,74 +30,107 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen w-full bg-[#07132b] text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none">
-      {/* Top Utility Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 max-w-5xl mx-auto w-full">
-        <div className="flex items-center gap-2 bg-[#0d2044] border border-blue-900/60 rounded-xl px-3 py-1.5 shadow-lg">
-          <SlidersHorizontal className="w-4 h-4 text-blue-400" />
-          <select
-            value={manualPeriodId}
-            onChange={(e) => setManualPeriodId(e.target.value)}
-            className="bg-transparent text-sm font-bold text-blue-100 focus:outline-none cursor-pointer"
-          >
-            <option value="AUTO" className="bg-[#0d2044] text-white">Auto-Detect Bell Schedule</option>
-            {BELL_SCHEDULE.map((p) => (
-              <option key={p.id} value={p.id} className="bg-[#0d2044] text-white">
-                {p.name} ({p.startTime} - {p.endTime})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleMute}
-            className={`p-2 rounded-xl border transition ${isMuted ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-[#0d2044] text-emerald-400 border-blue-900/60'}`}
-          >
-            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
-
-          <button
-            onClick={toggleFullscreen}
-            className="flex items-center gap-1.5 bg-[#0d2044] hover:bg-blue-900/50 border border-blue-900/60 px-3 py-2 rounded-xl text-xs font-bold text-blue-100 transition shadow-md"
-          >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            <span className="hidden sm:inline">TV Mode</span>
-          </button>
-        </div>
+    <main className="relative min-h-screen w-full bg-[#040c1e] text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none overflow-hidden">
+      {/* Background Watermark Shield */}
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center opacity-10 z-0">
+        <img
+          src="/logo-shield.jpg"
+          alt="Ford MS Watermark"
+          className="w-[650px] max-w-[90vw] object-contain select-none"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/logo-shield.png';
+          }}
+        />
       </div>
 
-      {/* Main Clock Area */}
-      <div className="w-full max-w-5xl mx-auto space-y-6">
-        {/* Class Banner */}
+      <div className="relative z-10 max-w-5xl mx-auto w-full">
+        {/* Top Header Bar & Wordmark */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo-shield.jpg"
+              alt="Ford MS Shield"
+              className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/logo-shield.png';
+              }}
+            />
+            <img
+              src="/logo-words.jpg"
+              alt="Ford Mustangs"
+              className="h-10 sm:h-12 object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/logo-words.png';
+              }}
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-[#001f5c]/80 border border-[#0047BA] rounded-xl px-3 py-1.5 shadow-lg backdrop-blur-sm">
+              <SlidersHorizontal className="w-4 h-4 text-[#E32636]" />
+              <select
+                value={manualPeriodId}
+                onChange={(e) => setManualPeriodId(e.target.value)}
+                className="bg-transparent text-xs sm:text-sm font-bold text-white focus:outline-none cursor-pointer"
+              >
+                <option value="AUTO" className="bg-[#040c1e] text-white">Auto-Detect Schedule</option>
+                {BELL_SCHEDULE.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-[#040c1e] text-white">
+                    {p.name} ({p.startTime} - {p.endTime})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={toggleMute}
+              className={`p-2.5 rounded-xl border transition backdrop-blur-sm ${
+                isMuted ? 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/40' : 'bg-[#001f5c]/80 text-emerald-400 border-[#0047BA]'
+              }`}
+              title="Toggle Sound"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1.5 bg-[#001f5c]/80 hover:bg-[#0047BA]/60 border border-[#0047BA] px-3 py-2 rounded-xl text-xs font-bold text-white transition shadow-md backdrop-blur-sm"
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              <span className="hidden sm:inline">TV Mode</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Master Bell & Dismissal Banner */}
         {currentPeriod ? (
-          <div className="bg-[#0d2044] border border-blue-800/60 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between shadow-2xl gap-4">
+          <div className="bg-[#001f5c]/90 border-2 border-[#0047BA] rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between shadow-2xl gap-4 mb-6 backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${isPassingPeriod ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-600/30 text-blue-300'}`}>
+              <div className={`p-3 rounded-xl ${isPassingPeriod ? 'bg-amber-500/20 text-amber-400' : 'bg-[#E32636]/20 text-[#E32636]'}`}>
                 {isPassingPeriod ? <AlertCircle className="w-6 h-6" /> : <Bell className="w-6 h-6" />}
               </div>
               <div>
-                <div className="text-xs uppercase font-bold tracking-wider text-blue-300">
-                  {isPassingPeriod ? 'Next Class In' : 'Current Period'}
+                <div className="text-xs uppercase font-black tracking-widest text-blue-200">
+                  {isPassingPeriod ? 'Next Class In' : 'Active Class Period'}
                 </div>
-                <div className="text-lg font-black text-white">{currentPeriod.name}</div>
+                <div className="text-xl sm:text-2xl font-black text-white">{currentPeriod.name}</div>
               </div>
             </div>
 
             <div className="flex items-center gap-6">
               {cleanupTimeFormatted !== null && (
                 <div className="text-right">
-                  <div className="flex items-center justify-end gap-1 text-xs uppercase font-bold tracking-wider text-amber-400">
-                    <Sparkles className="w-3.5 h-3.5" /> Cleanup
+                  <div className="flex items-center justify-end gap-1 text-xs uppercase font-black tracking-wider text-[#E32636]">
+                    <Sparkles className="w-3.5 h-3.5" /> Cleanup Alert
                   </div>
-                  <div className={`text-2xl sm:text-3xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-slate-400' : 'text-amber-400'}`}>
+                  <div className={`text-2xl sm:text-3xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
                     {cleanupSecLeft === 0 ? 'CLEANUP NOW' : cleanupTimeFormatted}
                   </div>
                 </div>
               )}
 
               <div className="text-right">
-                <div className="text-xs uppercase font-bold tracking-wider text-blue-300">
+                <div className="text-xs uppercase font-black tracking-wider text-blue-200">
                   {isPassingPeriod ? 'Starts In' : 'Final Bell'}
                 </div>
                 <div className="text-2xl sm:text-3xl font-mono font-black text-emerald-400">
@@ -107,16 +140,17 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="bg-[#0d2044] border border-blue-900/60 rounded-2xl p-4 text-center text-blue-300 font-bold">
+          <div className="bg-[#001f5c]/90 border border-[#0047BA] rounded-2xl p-4 text-center text-blue-200 font-bold mb-6">
             Outside Scheduled School Hours
           </div>
         )}
 
+        {/* Workout Engine */}
         <WorkoutEngine />
       </div>
 
-      <div className="text-center text-xs font-black text-blue-400/70 tracking-widest uppercase mt-4">
-        Ford Mustangs • Cardio Weights
+      <div className="relative z-10 text-center text-xs font-black text-blue-300/80 tracking-widest uppercase mt-6">
+        Ford Middle School Physical Education & Athletics
       </div>
     </main>
   );
