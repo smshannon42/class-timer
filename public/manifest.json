@@ -1,0 +1,10 @@
+{
+  "name": "Cardio Weights Class Clocks",
+  "short_name": "ClassTimer",
+  "description": "Period bell countdown and workout interval timer for athletic conditioning.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "any"
+}
