@@ -1,27 +1,24 @@
 import React from 'react';
 
+const SHIELD_SRC = "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0BAMAAADP4xsBAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAAwUExURSap4v///9/8/ya98iap6Zzw/9/Y6VGq4//x8//j7L76/77K5VHQ+Jy743et43fg/EpLf1YAAAN1SURBVGje7Zg/a9tAFMAPTqPAvEDFucKG8xpakKEUAqVdtIhAcD+BoEOgQxFtxkxdPKQt2jJfx05uP0CLMmbSN4g+QCjIH6D0vZMc1GArsomgLe9HpOjf/XR6enfWnRAMwzAMwzAMwzAMwzAM828jf/amnkK87obaaznbkQDSvtShyvtSb3gDf7kaC0udXoKXHOAixEDDZLKP6gM4o7OvjFpUVx5qOEto/Yhu3SjSqn4AAB9wGQtnhv/Al9rXgDWewjeA6gGkwRMLu56LZpF2NQD+4eIJF/xT8IrqkI9nYQ+F9n3TkcKuh6JZ5A71wsU6ulgmxFwsbdGcdqcwElmVnhmci2eYq8f4YHmzSLtaJY7BZaaSCKNQqkTqIcWmmKI2rB66hKJe3yrSrvaEY8ilkptae1ZDGTKw6kpi1xGkzSJd1TbWfqXOICe1i0ER9oJ6HcJ8F7XNkLiXWlNO2Ly9HWvaa8Z6ezW2hao1UgZQhviUIdJ8shnyJA/gHG+y2EmNgkpNLYeegRrKANM3oq38Jq93qTUKzrCoD1Vr/EqtkdT2TO6sWuMOsc6ocvia5pe2D1Gn1IdIMxfiue09Vn1IB/Xt7hv2Jq0dw+6U2JVJPerB7JgRPW0ftcbYff9l7v+npXqriJf0oZZLgP1ezAzDMAzDMMz/yGH3b8dpNYT6k2y++YM67T79su67e7NalF0+00MqL2HdLFWLulsoKnUhtgxIOCrVtcYh/0v4SHM1k2NXK7TQ8Vzgdo4HfSEuAIoLvCTEQbDvzK5w0ym9slVtR7Q0fTKBPFJLlWeKxmChnf7BcaQ/0Hv7Qizh/TUNfWs1bhYDOz5tU+eZJ3UsEsfEwdhVJyYe2LmJPPAdc36kkqwOSDQ8Kee1eiRhgfuzVvVQBCNnFmNAwKrf6ddfcBAbqiTypc7x9a3U0xFeWqvnjlngfnaXeozqSP0wcaiWnsTHJPVQoBqa6qChTlFN+13UWHVjp7iwpjbjrHpjrdOq1h3VGPBwTEPeVDyt1XWsx81Yq5OyVkdDZ9YpIKBRTQPSACZ+rRYBTYsENJ2HagoVTcJBrb4zQ2q11H5AaohdA49XatfY5ParJnOJySyW6qpWY16/7doandlCZOk2DfVF95mFfEv1FvMhDz+v7YXugSMNb/hHjGEYhmEYhmEYhmEYhmGYfvgN0KZJsOCV7jkAAAAASUVORK5CYII=";
+const WORDS_SRC = "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0BAMAAADP4xsBAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAAwUExURSap4v///9/8/ya98iap6Zzw/9/Y6VGq4//x8//j7L76/77K5VHQ+Jy743et43fg/EpLf1YAAAN1SURBVGje7Zg/a9tAFMAPTqPAvEDFucKG8xpakKEUAqVdtIhAcD+BoEOgQxFtxkxdPKQt2jJfx05uP0CLMmbSN4g+QCjIH6D0vZMc1GArsomgLe9HpOjf/XR6enfWnRAMwzAMwzAMwzAMwzAM828jf/amnkK87obaaznbkQDSvtShyvtSb3gDf7kaC0udXoKXHOAixEDDZLKP6gM4o7OvjFpUVx5qOEto/Yhu3SjSqn4AAB9wGQtnhv/Al9rXgDWewjeA6gGkwRMLu56LZpF2NQD+4eIJF/xT8IrqkI9nYQ+F9n3TkcKuh6JZ5A71wsU6ulgmxFwsbdGcdqcwElmVnhmci2eYq8f4YHmzSLtaJY7BZaaSCKNQqkTqIcWmmKI2rB66hKJe3yrSrvaEY8ilkptae1ZDGTKw6kpi1xGkzSJd1TbWfqXOICe1i0ER9oJ6HcJ8F7XNkLiXWlNO2Ly9HWvaa8Z6ezW2hao1UgZQhviUIdJ8shnyJA/gHG+y2EmNgkpNLYeegRrKANM3oq38Jq93qTUKzrCoD1Vr/EqtkdT2TO6sWuMOsc6ocvia5pe2D1Gn1IdIMxfiue09Vn1IB/Xt7hv2Jq0dw+6U2JVJPerB7JgRPW0ftcbYff9l7v+npXqriJf0oZZLgP1ezAzDMAzDMMz/yGH3b8dpNYT6k2y++YM67T79su67e7NalF0+00MqL2HdLFWLulsoKnUhtgxIOCrVtcYh/0v4SHM1k2NXK7TQ8Vzgdo4HfSEuAIoLvCTEQbDvzK5w0ym9slVtR7Q0fTKBPFJLlWeKxmChnf7BcaQ/0Hv7Qizh/TUNfWs1bhYDOz5tU+eZJ3UsEsfEwdhVJyYe2LmJPPAdc36kkqwOSDQ8Kee1eiRhgfuzVvVQBCNnFmNAwKrf6ddfcBAbqiTypc7x9a3U0xFeWqvnjlngfnaXeozqSP0wcaiWnsTHJPVQoBqa6qChTlFN+13UWHVjp7iwpjbjrHpjrdOq1h3VGPBwTEPeVDyt1XWsx81Yq5OyVkdDZ9YpIKBRTQPSACZ+rRYBTYsENJ2HagoVTcJBrb4zQ2q11H5AaohdA49XatfY5ParJnOJySyW6qpWY16/7doandlCZOk2DfVF95mFfEv1FvMhDz+v7YXugSMNb/hHjGEYhmEYhmEYhmEYhmGYfvgN0KZJsOCV7jkAAAAASUVORK5CYII=";
+
 export function MustangShield({ className = "w-14 h-14" }: { className?: string }) {
   return (
     <img
-      src="/logo-shield.png"
-      alt="Ford MS Mustang Shield"
-      className={`${className} object-contain`}
-      onError={(e) => {
-        (e.target as HTMLImageElement).src = '/logo-shield.jpg';
-      }}
+      src={SHIELD_SRC}
+      alt="Ford MS Official Shield"
+      className="${className} object-contain"
     />
   );
 }
 
-export function MustangWordmark({ className = "h-10" }: { className?: string }) {
+export function MustangWordmark({ className = "h-12" }: { className?: string }) {
   return (
     <img
-      src="/logo-words.png"
-      alt="Ford Mustangs"
-      className={`${className} object-contain`}
-      onError={(e) => {
-        (e.target as HTMLImageElement).src = '/logo-words.jpg';
-      }}
+      src={WORDS_SRC}
+      alt="Ford Mustangs Official Wordmark"
+      className="${className} object-contain"
     />
   );
 }
