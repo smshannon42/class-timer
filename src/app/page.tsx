@@ -135,8 +135,8 @@ export default function Home() {
         <WorkoutEngine />
       </div>
 
-      <div className="text-center text-[10px] font-black text-blue-400/60 tracking-widest uppercase mt-3">
-        Ford Middle School • Cardio Weights
+      <div className="text-center text-[11px] font-black text-blue-300/70 tracking-widest uppercase mt-3">
+        Mustang Pulse • Ford Middle School PE & Athletics
       </div>
     </main>
   );
