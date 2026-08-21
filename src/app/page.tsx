@@ -87,33 +87,33 @@ export default function Home() {
           </div>
         </div>
 
-        {/* HIGH-VISIBILITY CLASS HUB BANNER */}
-        <div className="bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-4 sm:p-5 flex flex-wrap items-center justify-between shadow-2xl gap-4">
+        {/* EXTRA-LARGE CLASS HUB BANNER */}
+        <div className="bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-5 sm:p-6 flex flex-wrap items-center justify-between shadow-2xl gap-4">
           
           {/* Active Period Name */}
-          <div className="flex items-center gap-3">
-            <div className="p-3.5 rounded-2xl bg-[#0047BA]/50 text-[#E32636] border border-white/10 shadow-md">
-              <Bell className="w-7 h-7 stroke-[2.5]" />
+          <div className="flex items-center gap-3.5">
+            <div className="p-4 rounded-2xl bg-[#0047BA]/50 text-[#E32636] border border-white/10 shadow-md">
+              <Bell className="w-8 h-8 stroke-[2.5]" />
             </div>
             <div>
-              <div className="text-xs uppercase font-black tracking-widest text-blue-300">
-                {isPassingPeriod ? 'Next Class Period' : 'Current Period'}
+              <div className="text-xs sm:text-sm uppercase font-black tracking-widest text-blue-300">
+                {isPassingPeriod ? 'Next Class Period' : 'Active Class Period'}
               </div>
-              <div className="text-2xl sm:text-3xl font-black text-white leading-tight">
+              <div className="text-2xl sm:text-4xl font-black text-white leading-tight">
                 {currentPeriod ? currentPeriod.name : 'Off Schedule'}
               </div>
             </div>
           </div>
 
-          {/* Large Countdown Timers */}
-          <div className="flex items-center gap-6 sm:gap-10">
+          {/* Massive Countdown Timers */}
+          <div className="flex items-center gap-6 sm:gap-12">
             {/* Cleanup Timer */}
             {cleanupTimeFormatted !== null && (
               <div className="text-right">
-                <div className="flex items-center justify-end gap-1.5 text-xs uppercase font-black tracking-wider text-[#E32636]">
-                  <Sparkles className="w-4 h-4" /> Cleanup Alert
+                <div className="flex items-center justify-end gap-1.5 text-xs sm:text-sm uppercase font-black tracking-wider text-[#E32636]">
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> Cleanup Alert
                 </div>
-                <div className={`text-3xl sm:text-4xl font-mono font-black tracking-tight leading-none mt-1 ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
+                <div className={`text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none mt-1.5 ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
                   {cleanupSecLeft === 0 ? 'CLEAN NOW' : cleanupTimeFormatted}
                 </div>
               </div>
@@ -121,10 +121,10 @@ export default function Home() {
 
             {/* Bell Timer */}
             <div className="text-right">
-              <div className="text-xs uppercase font-black tracking-wider text-blue-300">
-                {isPassingPeriod ? 'Starts In' : 'Dismissal Bell'}
+              <div className="text-xs sm:text-sm uppercase font-black tracking-wider text-blue-300">
+                {isPassingPeriod ? 'Starts In' : 'Period Bell'}
               </div>
-              <div className="text-3xl sm:text-4xl font-mono font-black tracking-tight leading-none text-emerald-400 mt-1">
+              <div className="text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none text-emerald-400 mt-1.5">
                 {bellTimeFormatted}
               </div>
             </div>
