@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Maximize2, Minimize2, SlidersHorizontal, Bell, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { Maximize2, Minimize2, SlidersHorizontal, Bell, Sparkles, Volume2, VolumeX, CheckCircle } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
@@ -15,6 +15,11 @@ export default function Home() {
 
   const { isDimmed, isMobile } = useWakeLock();
   const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown(manualPeriodId);
+
+  // Check if active period is 3rd, 6th, or 7th
+  const isSpecialPeriod = currentPeriod && ['p3', 'p6', 'p7', '3', '6', '7'].some(
+    (key) => currentPeriod.id?.toLowerCase().includes(key) || currentPeriod.name?.toLowerCase().includes(key)
+  );
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -87,7 +92,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* EXTRA-LARGE CLASS HUB BANNER */}
+        {/* CLASS HUB BANNER */}
         <div className="bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-5 sm:p-6 flex flex-wrap items-center justify-between shadow-2xl gap-4">
           
           {/* Active Period Name */}
@@ -105,29 +110,42 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Massive Countdown Timers */}
+          {/* Timers Section */}
           <div className="flex items-center gap-6 sm:gap-12">
-            {/* Cleanup Timer */}
-            {cleanupTimeFormatted !== null && (
+            {/* If 3rd, 6th, or 7th Period: ONLY Show Cleanup as 'Complete' */}
+            {isSpecialPeriod ? (
               <div className="text-right">
                 <div className="flex items-center justify-end gap-1.5 text-xs sm:text-sm uppercase font-black tracking-wider text-[#E32636]">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> Cleanup Alert
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" /> Complete
                 </div>
                 <div className={`text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none mt-1.5 ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
-                  {cleanupSecLeft === 0 ? 'CLEAN NOW' : cleanupTimeFormatted}
+                  {cleanupSecLeft === 0 ? 'COMPLETE' : (cleanupTimeFormatted ?? bellTimeFormatted)}
                 </div>
               </div>
-            )}
+            ) : (
+              /* All Other Periods: Standard Dual Display */
+              <>
+                {cleanupTimeFormatted !== null && (
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-1.5 text-xs sm:text-sm uppercase font-black tracking-wider text-[#E32636]">
+                      <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> Cleanup Alert
+                    </div>
+                    <div className={`text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none mt-1.5 ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
+                      {cleanupSecLeft === 0 ? 'CLEAN NOW' : cleanupTimeFormatted}
+                    </div>
+                  </div>
+                )}
 
-            {/* Bell Timer */}
-            <div className="text-right">
-              <div className="text-xs sm:text-sm uppercase font-black tracking-wider text-blue-300">
-                {isPassingPeriod ? 'Starts In' : 'Period Bell'}
-              </div>
-              <div className="text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none text-emerald-400 mt-1.5">
-                {bellTimeFormatted}
-              </div>
-            </div>
+                <div className="text-right">
+                  <div className="text-xs sm:text-sm uppercase font-black tracking-wider text-blue-300">
+                    {isPassingPeriod ? 'Starts In' : 'Period Bell'}
+                  </div>
+                  <div className="text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none text-emerald-400 mt-1.5">
+                    {bellTimeFormatted}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
