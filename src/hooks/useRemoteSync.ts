@@ -9,7 +9,6 @@ export function useRemoteSync(onCommandReceived?: (data: any) => void) {
   const peerRef = useRef<Peer | null>(null);
   const connRef = useRef<DataConnection | null>(null);
 
-  // Initialize Host (Computer/TV Screen)
   const initHost = () => {
     const code = Math.random().toString(36).substring(2, 6).toUpperCase();
     const peerId = `mustang-pulse-${code}`;
@@ -32,7 +31,6 @@ export function useRemoteSync(onCommandReceived?: (data: any) => void) {
     peerRef.current = peer;
   };
 
-  // Connect as Controller (Phone)
   const connectToHost = (targetCode: string) => {
     const peer = new Peer();
     peer.on('open', () => {
