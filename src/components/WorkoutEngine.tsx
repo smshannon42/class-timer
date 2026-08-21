@@ -182,14 +182,14 @@ export default function WorkoutEngine() {
   return (
     <div className="bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-6 sm:p-8 shadow-2xl text-white backdrop-blur-md">
       {/* Mode Selectors */}
-      <div className="flex flex-wrap items-center justify-center gap-2 bg-[#040c1e] p-2 rounded-2xl mb-8 border border-[#0047BA]/60">
+      <div className="flex flex-wrap items-center justify-center gap-2 bg-[#020b1c] p-2 rounded-2xl mb-8 border border-[#0047BA]">
         {(['WARMUP', 'TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
           <button
             key={m}
             onClick={() => handleModeChange(m)}
             className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm tracking-wider transition ${
               mode === m
-                ? 'bg-[#0047BA] text-white shadow-lg shadow-[#0047BA]/50 border border-white/20'
+                ? 'bg-[#0047BA] text-white shadow-lg shadow-[#0047BA]/60 border border-white/30'
                 : 'text-blue-200 hover:text-white'
             }`}
           >
@@ -217,17 +217,17 @@ export default function WorkoutEngine() {
           </span>
         )}
         {mode === 'EMOM' && (
-          <span className="text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full bg-[#0047BA]/30 text-blue-200 border border-[#0047BA]">
+          <span className="text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
             ROUND {currentRound} OF {emomRounds}
           </span>
         )}
         {mode === 'AMRAP' && (
-          <span className="text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border border-[#E32636]/40">
+          <span className="text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border border-[#E32636]/50">
             AMRAP
           </span>
         )}
-        {mode === 'FOR_TIME' && (
-          <span className="text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full bg-[#0047BA]/30 text-white border border-[#0047BA]">
+      {mode === 'FOR_TIME' && (
+          <span className="text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
             FOR TIME COUNTDOWN
           </span>
         )}
@@ -235,7 +235,7 @@ export default function WorkoutEngine() {
 
       {/* Main Countdown Display or Custom Input */}
       {isEditingForTime && mode === 'FOR_TIME' ? (
-        <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#040c1e] p-6 rounded-3xl border-2 border-[#0047BA] shadow-xl max-w-lg mx-auto">
+        <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#020b1c] p-6 rounded-3xl border-2 border-[#0047BA] shadow-xl max-w-lg mx-auto">
           <span className="text-sm uppercase font-black tracking-widest text-[#E32636]">Set Custom Countdown</span>
           <div className="flex items-center justify-center gap-3">
             <div className="flex flex-col items-center">
@@ -252,7 +252,7 @@ export default function WorkoutEngine() {
             <span className="text-6xl font-mono font-black text-[#0047BA] mt-6">:</span>
             <div className="flex flex-col items-center">
               <span className="text-xs uppercase font-bold text-blue-300 mb-1">Seconds</span>
-              <inp
+              <input
                 type="number"
                 min="0"
                 max="59"
@@ -291,7 +291,7 @@ export default function WorkoutEngine() {
       {mode === 'WARMUP' && (
         <div className="text-center text-lg sm:text-xl font-bold text-blue-200 mb-6">
           {warmupPhase === 'RUN' ? (
-            <span>Continuous Light Jog & Warm-Up Run</span>
+            <span>Continuous Jog & Warm-Up Run</span>
           ) : (
             <span>Stretch <span className="text-white font-black text-2xl">{stretchRound}</span> of 6 (20s Switch)</span>
           )}
@@ -307,7 +307,7 @@ export default function WorkoutEngine() {
       {mode === 'AMRAP' && (
         <div className="flex items-center justify-center gap-4 mb-6">
           <span className="text-blue-200 font-bold text-lg">Completed Rounds:</span>
-          <div className="flex items-center gap-3 bg-[#040c1e] px-4 py-2 rounded-2xl border border-[#0047BA]">
+          <div className="flex items-center gap-3 bg-[#020b1c] px-4 py-2 rounded-2xl border border-[#0047BA]">
             <button onClick={() => setAmrapCompletedRounds((r) => Math.max(0, r - 1))} className="p-1 text-blue-300 hover:text-white"><Minus className="w-5 h-5" /></button>
             <span className="text-2xl font-black text-white px-2">{amrapCompletedRounds}</span>
             <button onClick={() => setAmrapCompletedRounds((r) => r + 1)} className="p-1 text-blue-300 hover:text-white"><Plus className="w-5 h-5" /></button>
@@ -322,7 +322,7 @@ export default function WorkoutEngine() {
             <div className="flex flex-wrap items-center justify-center gap-4 w-full">
               <button
                 onClick={() => handleAdjustWarmupRunSeconds(-30)}
-                className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#040c1e] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+                className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
               >
                 <Minus className="w-6 h-6 stroke-[3]" />
                 <span>30s Run</span>
@@ -330,7 +330,7 @@ export default function WorkoutEngine() {
 
               <button
                 onClick={() => handleAdjustWarmupRunSeconds(30)}
-                className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#040c1e] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+                className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
               >
                 <Plus className="w-6 h-6 stroke-[3]" />
                 <span>30s Run</span>
@@ -346,7 +346,7 @@ export default function WorkoutEngine() {
           <div className="flex flex-wrap items-center justify-center gap-4 max-w-xl mx-auto">
             <button
               onClick={() => handleAdjustForTimeSeconds(-30)}
-              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#040c1e] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
             >
               <Minus className="w-6 h-6 stroke-[3]" />
               <span>30s</span>
@@ -366,7 +366,7 @@ export default function WorkoutEngine() {
 
             <button
               onClick={() => handleAdjustForTimeSeconds(30)}
-              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#040c1e] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
             >
               <Plus className="w-6 h-6 stroke-[3]" />
               <span>30s</span>
@@ -376,17 +376,17 @@ export default function WorkoutEngine() {
 
         {mode === 'TABATA' && (
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
-            <div className="flex items-center gap-2 bg-[#040c1e] px-3 py-1.5 rounded-xl border border-[#0047BA]">
+            <div className="flex items-center gap-2 bg-[#020b1c] px-3 py-1.5 rounded-xl border border-[#0047BA]">
               <span>Work: {tabataWork}s</span>
               <button onClick={() => { setTabataWork(w => Math.max(5, w - 5)); if (!isActive && isWorkPhase) setSecondsRemaining(w => Math.max(5, w - 5)); }} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => { setTabataWork(w => w + 5); if (!isActive && isWorkPhase) setSecondsRemaining(w => w + 5); }} className="hover:text-white"><Plus className="w-4 h-4" /></button>
             </div>
-            <div className="flex items-center gap-2 bg-[#040c1e] px-3 py-1.5 rounded-xl border border-[#0047BA]">
+            <div className="flex items-center gap-2 bg-[#020b1c] px-3 py-1.5 rounded-xl border border-[#0047BA]">
               <span>Rest: {tabataRest}s</span>
               <button onClick={() => setTabataRest(r => Math.max(5, r - 5))} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => setTabataRest(r => r + 5)} className="hover:text-white"><Plus className="w-4 h-4" /></button>
             </div>
-            <div className="flex items-center gap-2 bg-[#040c1e] px-3 py-1.5 rounded-xl border border-[#0047BA]">
+            <div className="flex items-center gap-2 bg-[#020b1c] px-3 py-1.5 rounded-xl border border-[#0047BA]">
               <span>Rounds: {tabataRounds}</span>
               <button onClick={() => setTabataRounds(r => Math.max(1, r - 1))} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => setTabataRounds(r => r + 1)} className="hover:text-white"><Plus className="w-4 h-4" /></button>
@@ -396,7 +396,7 @@ export default function WorkoutEngine() {
 
         {mode === 'AMRAP' && (
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
-            <div className="flex items-center gap-2 bg-[#040c1e] px-3 py-1.5 rounded-xl border border-[#0047BA]">
+            <div className="flex items-center gap-2 bg-[#020b1c] px-3 py-1.5 rounded-xl border border-[#0047BA]">
               <span>Cap: {amrapMinutes}m</span>
               <button onClick={() => { setAmrapMinutes(m => Math.max(1, m - 1)); if (!isActive) setSecondsRemaining(m => Math.max(60, (m - 1) * 60)); }} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => { setAmrapMinutes(m => m + 1); if (!isActive) setSecondsRemaining(m => (m + 1) * 60); }} className="hover:text-white"><Plus className="w-4 h-4" /></button>
@@ -406,12 +406,12 @@ export default function WorkoutEngine() {
 
         {mode === 'EMOM' && (
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
-            <div className="flex items-center gap-2 bg-[#040c1e] px-3 py-1.5 rounded-xl border border-[#0047BA]">
+            <div className="flex items-center gap-2 bg-[#020b1c] px-3 py-1.5 rounded-xl border border-[#0047BA]">
               <span>Interval: {emomInterval}s</span>
               <button onClick={() => { setEmomInterval(i => Math.max(30, i - 15)); if (!isActive) setSecondsRemaining(i => Math.max(30, i - 15)); }} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => { setEmomInterval(i => i + 15); if (!isActive) setSecondsRemaining(i => i + 15); }} className="hover:text-white"><Plus className="w-4 h-4" /></button>
             </div>
-            <div className="flex items-center gap-2 bg-[#040c1e] px-3 py-1.5 rounded-xl border border-[#0047BA]">
+            <div className="flex items-center gap-2 bg-[#020b1c] px-3 py-1.5 rounded-xl border border-[#0047BA]">
               <span>Rounds: {emomRounds}</span>
               <button onClick={() => setEmomRounds(r => Math.max(1, r - 1))} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => setEmomRounds(r => r + 1)} className="hover:text-white"><Plus className="w-4 h-4" /></button>
@@ -420,7 +420,7 @@ export default function WorkoutEngine() {
         )}
       </div>
 
-      {/* Primary Action Buttons */}
+      {/* Action Buttons */}
       <div className="flex items-center justify-center gap-4">
         <button
           onClick={() => {
@@ -429,13 +429,13 @@ export default function WorkoutEngine() {
           }}
           className={`flex items-center gap-2 px-10 py-4 rounded-2xl font-black text-xl tracking-wider transition shadow-2xl ${
             isActive
-              ? 'bg-[#E32636] hover:bg-[#c91e2c] text-white shadow-lg shadow-[#E32636]/30'
-              : 'bg-[#0047BA] hover:bg-[#003da5] text-white shadow-lg shadow-[#0047BA]/40 border border-white/20'
+              ? 'bg-[#E32636] hover:bg-[#c91e2c] text-white shadow-lg shadow-[#E32636]/40'
+              : 'bg-[#0047BA] hover:bg-[#003da5] text-white shadow-lg shadow-[#0047BA]/50 border border-white/20'
           }`}
         >
           {isActive ? <><Pause className="w-6 h-6 fill-current" /> PAUSE</> : <><Play className="w-6 h-6 fill-current" /> START</>}
         </button>
-        <button onClick={resetTimer} className="p-4 bg-[#040c1e] hover:bg-[#001f5c] text-blue-200 rounded-2xl border border-[#0047BA] transition">
+        <button onClick={resetTimer} className="p-4 bg-[#020b1c] hover:bg-[#001f5c] text-blue-200 rounded-2xl border border-[#0047BA] transition">
           <RotateCcw className="w-6 h-6" />
         </button>
       </div>

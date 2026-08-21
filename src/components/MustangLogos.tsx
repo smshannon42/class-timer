@@ -2,45 +2,45 @@ import React from 'react';
 
 export function MustangShield({ className = "w-12 h-12" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 400 400" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Outer White Border & Blue Shield */}
+    <svg viewBox="0 0 500 500" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Outer White Border */}
       <path
-        d="M 80 80 Q 200 40 320 80 Q 320 220 200 360 Q 80 220 80 80 Z"
+        d="M 90 70 Q 250 20 410 70 Q 410 250 250 450 Q 90 250 90 70 Z"
         fill="#0047BA"
         stroke="#FFFFFF"
-        strokeWidth="14"
+        strokeWidth="18"
         strokeLinejoin="round"
       />
-      {/* Inner White Ring */}
+      {/* Inner Accent Line */}
       <path
-        d="M 98 96 Q 200 60 302 96 Q 302 214 200 334 Q 98 214 98 96 Z"
+        d="M 115 95 Q 250 50 385 95 Q 385 240 250 420 Q 115 240 115 95 Z"
         fill="#003594"
         stroke="#FFFFFF"
-        strokeWidth="4"
+        strokeWidth="6"
       />
-      {/* Mustang Stallion Head (Scarlet Red Silhouette) */}
+      {/* Scarlet Red Mustang Stallion */}
       <path
-        d="M 140 180 C 130 155 155 125 185 115 C 225 102 270 120 295 155 C 310 176 320 205 310 220 C 290 205 285 185 260 170 C 275 195 280 230 255 260 C 240 280 215 305 185 320 C 205 290 220 260 210 230 C 200 200 175 180 150 185 C 135 188 120 200 115 210 C 110 200 125 185 140 180 Z"
+        d="M 170 210 C 150 170 180 130 225 120 C 285 105 345 130 375 180 C 390 210 395 250 380 270 C 355 250 345 225 315 205 C 335 240 338 280 305 320 C 285 345 255 375 220 395 C 245 355 260 315 250 275 C 235 235 205 210 175 215 C 155 220 140 235 135 250 C 130 235 150 215 170 210 Z"
         fill="#E32636"
         stroke="#FFFFFF"
-        strokeWidth="4"
+        strokeWidth="5"
         strokeLinejoin="round"
       />
-      {/* Eye & Mane Accent Cuts */}
-      <path d="M 180 160 Q 195 155 190 170 Q 175 168 180 160 Z" fill="#FFFFFF" />
-      <path d="M 215 135 Q 245 150 250 175 C 235 160 220 150 215 135 Z" fill="#0047BA" />
-      <path d="M 240 170 Q 270 195 270 225 C 255 205 240 190 240 170 Z" fill="#0047BA" />
+      {/* Mane & Detail Cuts */}
+      <path d="M 220 185 Q 240 175 235 195 Q 215 195 220 185 Z" fill="#FFFFFF" />
+      <path d="M 265 150 Q 305 170 310 205 C 290 185 270 170 265 150 Z" fill="#0047BA" />
+      <path d="M 295 195 Q 335 230 330 270 C 310 240 295 220 295 195 Z" fill="#0047BA" />
     </svg>
   );
 }
 
-export function MustangWordmark({ className = "h-10" }: { className?: string }) {
+export function MustangWordmark() {
   return (
-    <div className={`flex flex-col items-center justify-center font-black tracking-tighter uppercase select-none ${className}`}>
-      <span className="text-2xl sm:text-3xl tracking-widest text-white drop-shadow-[0_2px_4px_rgba(0,71,186,1)] leading-none">
+    <div className="flex flex-col select-none">
+      <span className="text-3xl sm:text-4xl font-black tracking-wider text-white drop-shadow-[0_3px_6px_rgba(0,0,0,0.9)] leading-none">
         FORD
       </span>
-      <span className="text-sm sm:text-base tracking-[0.25em] text-[#E32636] font-extrabold -mt-0.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+      <span className="text-sm sm:text-base font-black tracking-[0.28em] text-[#E32636] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] -mt-0.5">
         MUSTANGS
       </span>
     </div>
