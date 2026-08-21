@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <main className="relative min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none transition-opacity duration-1000">
       
-      {/* 3-Minute Inactivity Dim & Blackout Overlay */}
+      {/* Inactivity Overlay */}
       {isDimmed && (
         <div 
           className={`fixed inset-0 z-50 transition-opacity duration-1000 pointer-events-none flex items-end justify-center pb-6 ${
@@ -48,7 +48,7 @@ export default function Home() {
 
       <div className={`max-w-4xl mx-auto w-full space-y-4 transition-all duration-1000 ${isDimmed && !isMobile ? 'opacity-25' : 'opacity-100'}`}>
         
-        {/* Top Bar */}
+        {/* Top Header Controls */}
         <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-4 py-2.5 rounded-2xl backdrop-blur-md">
           <MustangWordmark />
 
@@ -87,46 +87,51 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Class Hub Status Strip */}
-        <div className="bg-[#001f5c]/90 border border-[#0047BA] rounded-2xl px-4 py-3 flex items-center justify-between shadow-xl">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#0047BA]/40 text-[#E32636]">
-              <Bell className="w-4 h-4" />
+        {/* HIGH-VISIBILITY CLASS HUB BANNER */}
+        <div className="bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-4 sm:p-5 flex flex-wrap items-center justify-between shadow-2xl gap-4">
+          
+          {/* Active Period Name */}
+          <div className="flex items-center gap-3">
+            <div className="p-3.5 rounded-2xl bg-[#0047BA]/50 text-[#E32636] border border-white/10 shadow-md">
+              <Bell className="w-7 h-7 stroke-[2.5]" />
             </div>
             <div>
-              <div className="text-[10px] uppercase font-black tracking-widest text-blue-300">
-                {isPassingPeriod ? 'Passing Period' : 'Class Period'}
+              <div className="text-xs uppercase font-black tracking-widest text-blue-300">
+                {isPassingPeriod ? 'Next Class Period' : 'Current Period'}
               </div>
-              <div className="text-base sm:text-lg font-black text-white leading-tight">
+              <div className="text-2xl sm:text-3xl font-black text-white leading-tight">
                 {currentPeriod ? currentPeriod.name : 'Off Schedule'}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-5 sm:gap-8">
+          {/* Large Countdown Timers */}
+          <div className="flex items-center gap-6 sm:gap-10">
+            {/* Cleanup Timer */}
             {cleanupTimeFormatted !== null && (
               <div className="text-right">
-                <div className="flex items-center justify-end gap-1 text-[10px] uppercase font-black text-[#E32636]">
-                  <Sparkles className="w-3 h-3" /> Cleanup
+                <div className="flex items-center justify-end gap-1.5 text-xs uppercase font-black tracking-wider text-[#E32636]">
+                  <Sparkles className="w-4 h-4" /> Cleanup Alert
                 </div>
-                <div className={`text-xl sm:text-2xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
-                  {cleanupSecLeft === 0 ? 'NOW' : cleanupTimeFormatted}
+                <div className={`text-3xl sm:text-4xl font-mono font-black tracking-tight leading-none mt-1 ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
+                  {cleanupSecLeft === 0 ? 'CLEAN NOW' : cleanupTimeFormatted}
                 </div>
               </div>
             )}
 
+            {/* Bell Timer */}
             <div className="text-right">
-              <div className="text-[10px] uppercase font-black text-blue-300">
-                {isPassingPeriod ? 'Starts' : 'Bell'}
+              <div className="text-xs uppercase font-black tracking-wider text-blue-300">
+                {isPassingPeriod ? 'Starts In' : 'Dismissal Bell'}
               </div>
-              <div className="text-xl sm:text-2xl font-mono font-black text-emerald-400">
+              <div className="text-3xl sm:text-4xl font-mono font-black tracking-tight leading-none text-emerald-400 mt-1">
                 {bellTimeFormatted}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Workout Engine */}
+        {/* Workout Engine Hub */}
         <WorkoutEngine />
       </div>
 
