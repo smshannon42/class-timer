@@ -175,46 +175,49 @@ export default function WorkoutEngine() {
         )}
       </div>
 
-      {/* Main Countdown Display */}
+      {/* Main Countdown Display or Custom Input */}
       {isEditingForTime && mode === 'FOR_TIME' ? (
-        <div className="flex items-center justify-center gap-3 my-6">
-          <div className="flex flex-col items-center">
-            <span className="text-xs uppercase font-bold text-blue-300 mb-1">Minutes</span>
-            <input
-              type="number"
-              min="0"
-              max="99"
-              value={editMinutes}
-              onChange={(e) => setEditMinutes(e.target.value)}
-              className="w-24 text-center bg-[#061024] border border-blue-700 text-white font-mono font-black text-5xl sm:text-6xl rounded-2xl p-2 focus:outline-none focus:border-blue-400"
-            />
+        <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#061024] p-6 rounded-3xl border border-blue-700/60 shadow-xl max-w-lg mx-auto">
+          <span className="text-sm uppercase font-black tracking-widest text-blue-300">Set Custom Countdown</span>
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-col items-center">
+              <span className="text-xs uppercase font-bold text-blue-400 mb-1">Minutes</span>
+              <input
+                type="number"
+                min="0"
+                max="99"
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(e.target.value)}
+                className="w-28 text-center bg-[#0d2044] border-2 border-blue-600 text-white font-mono font-black text-6xl rounded-2xl p-3 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
+            <span className="text-6xl font-mono font-black text-blue-400 mt-6">:</span>
+            <div className="flex flex-col items-center">
+              <span className="text-xs uppercase font-bold text-blue-400 mb-1">Seconds</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                value={editSeconds}
+                onChange={(e) => setEditSeconds(e.target.value)}
+                className="w-28 text-center bg-[#0d2044] border-2 border-blue-600 text-white font-mono font-black text-6xl rounded-2xl p-3 focus:outline-none focus:border-cyan-400"
+              />
+            </div>
           </div>
-          <span className="text-5xl font-mono font-black text-blue-400 mt-6">:</span>
-          <div className="flex flex-col items-center">
-            <span className="text-xs uppercase font-bold text-blue-300 mb-1">Seconds</span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              value={editSeconds}
-              onChange={(e) => setEditSeconds(e.target.value)}
-              className="w-24 text-center bg-[#061024] border border-blue-700 text-white font-mono font-black text-5xl sm:text-6xl rounded-2xl p-2 focus:outline-none focus:border-blue-400"
-            />
-          </div>
-          <div className="flex flex-col gap-2 mt-6 ml-2">
+          <div className="flex items-center gap-4 mt-4 w-full max-w-xs justify-center">
             <button
               onClick={handleSaveCustomTime}
-              className="p-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white shadow-md transition"
-              title="Save Time"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold shadow-lg transition"
             >
-              <Check className="w-6 h-6" />
+              <Check className="w-5 h-5" />
+              <span>Save</span>
             </button>
             <button
               onClick={() => setIsEditingForTime(false)}
-              className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 transition"
-              title="Cancel"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 font-bold transition"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
+              <span>Cancel</span>
             </button>
           </div>
         </div>
@@ -244,31 +247,46 @@ export default function WorkoutEngine() {
         </div>
       )}
 
-      {/* Quick Adjusters */}
-      <div className="flex flex-wrap items-center justify-center gap-3 mb-8 text-xs sm:text-sm font-semibold text-blue-200">
-        {mode === 'FOR_TIME' && (
-          <>
-            <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
-              <span>Time: {formatTime(forTimeTotalSeconds)}</span>
-              <button onClick={() => handleAdjustForTimeSeconds(-30)} className="hover:text-white px-1 font-bold text-xs bg-blue-950/80 rounded py-0.5 border border-blue-800/40">-30s</button>
-              <button onClick={() => handleAdjustForTimeSeconds(30)} className="hover:text-white px-1 font-bold text-xs bg-blue-950/80 rounded py-0.5 border border-blue-800/40">+30s</button>
-            </div>
+      {/* Big Adjusters & Custom Edit Bar */}
+      <div className="my-6">
+        {mode === 'FOR_TIME' && !isEditingForTime && (
+          <div className="flex flex-wrap items-center justify-center gap-4 max-w-xl mx-auto">
+            {/* Big -30s Button */}
+            <button
+              onClick={() => handleAdjustForTimeSeconds(-30)}
+              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#061024] hover:bg-blue-950/80 active:scale-95 text-blue-300 hover:text-white border-2 border-blue-800/80 py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+            >
+              <Minus className="w-6 h-6 stroke-[3]" />
+              <span>30s</span>
+            </button>
+
+            {/* Big Edit Time Button */}
             <button
               onClick={() => {
                 setEditMinutes(Math.floor(forTimeTotalSeconds / 60).toString());
                 setEditSeconds((forTimeTotalSeconds % 60).toString().padStart(2, '0'));
                 setIsEditingForTime(true);
               }}
-              className="flex items-center gap-1.5 bg-[#061024] hover:bg-blue-900/40 text-blue-300 border border-blue-900/50 px-3 py-1.5 rounded-xl transition"
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 bg-blue-600/30 hover:bg-blue-600/50 active:scale-95 text-cyan-300 hover:text-white border-2 border-cyan-500/40 py-4 px-6 rounded-2xl text-base sm:text-lg font-black shadow-lg transition"
             >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Custom Time</span>
+              <Edit3 className="w-5 h-5" />
+              <span>EDIT TIME</span>
             </button>
-          </>
+
+            {/* Big +30s Button */}
+            <button
+              onClick={() => handleAdjustForTimeSeconds(30)}
+              className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#061024] hover:bg-blue-950/80 active:scale-95 text-blue-300 hover:text-white border-2 border-blue-800/80 py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+            >
+              <Plus className="w-6 h-6 stroke-[3]" />
+              <span>30s</span>
+            </button>
+          </div>
         )}
 
+        {/* Tabata Adjusters */}
         {mode === 'TABATA' && (
-          <>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
             <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
               <span>Work: {tabataWork}s</span>
               <button onClick={() => { setTabataWork(w => Math.max(5, w - 5)); if (!isActive && isWorkPhase) setSecondsRemaining(w => Math.max(5, w - 5)); }} className="hover:text-white"><Minus className="w-4 h-4" /></button>
@@ -284,19 +302,23 @@ export default function WorkoutEngine() {
               <button onClick={() => setTabataRounds(r => Math.max(1, r - 1))} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => setTabataRounds(r => r + 1)} className="hover:text-white"><Plus className="w-4 h-4" /></button>
             </div>
-          </>
-        )}
-
-        {mode === 'AMRAP' && (
-          <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
-            <span>Cap: {amrapMinutes}m</span>
-            <button onClick={() => { setAmrapMinutes(m => Math.max(1, m - 1)); if (!isActive) setSecondsRemaining(m => Math.max(60, (m - 1) * 60)); }} className="hover:text-white"><Minus className="w-4 h-4" /></button>
-            <button onClick={() => { setAmrapMinutes(m => m + 1); if (!isActive) setSecondsRemaining(m => (m + 1) * 60); }} className="hover:text-white"><Plus className="w-4 h-4" /></button>
           </div>
         )}
 
+        {/* AMRAP Adjusters */}
+        {mode === 'AMRAP' && (
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
+            <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
+              <span>Cap: {amrapMinutes}m</span>
+              <button onClick={() => { setAmrapMinutes(m => Math.max(1, m - 1)); if (!isActive) setSecondsRemaining(m => Math.max(60, (m - 1) * 60)); }} className="hover:text-white"><Minus className="w-4 h-4" /></button>
+              <button onClick={() => { setAmrapMinutes(m => m + 1); if (!isActive) setSecondsRemaining(m => (m + 1) * 60); }} className="hover:text-white"><Plus className="w-4 h-4" /></button>
+            </div>
+          </div>
+        )}
+
+        {/* EMOM Adjusters */}
         {mode === 'EMOM' && (
-          <>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
             <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
               <span>Interval: {emomInterval}s</span>
               <button onClick={() => { setEmomInterval(i => Math.max(30, i - 15)); if (!isActive) setSecondsRemaining(i => Math.max(30, i - 15)); }} className="hover:text-white"><Minus className="w-4 h-4" /></button>
@@ -307,7 +329,7 @@ export default function WorkoutEngine() {
               <button onClick={() => setEmomRounds(r => Math.max(1, r - 1))} className="hover:text-white"><Minus className="w-4 h-4" /></button>
               <button onClick={() => setEmomRounds(r => r + 1)} className="hover:text-white"><Plus className="w-4 h-4" /></button>
             </div>
-          </>
+          </div>
         )}
       </div>
 
