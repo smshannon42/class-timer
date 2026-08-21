@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Plus, Minus } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
 
 type WorkoutMode = 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
@@ -14,13 +14,17 @@ export default function WorkoutEngine() {
   const [amrapCompletedRounds, setAmrapCompletedRounds] = useState(0);
   const [emomInterval, setEmomInterval] = useState(60);
   const [emomRounds, setEmomRounds] = useState(10);
-  const [forTimeCap, setForTimeCap] = useState(12);
+
+  // For Time (Countdown default 5:00 = 300s)
+  const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(300);
+  const [isEditingForTime, setIsEditingForTime] = useState(false);
+  const [editMinutes, setEditMinutes] = useState('5');
+  const [editSeconds, setEditSeconds] = useState('00');
 
   const [isActive, setIsActive] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
   const [secondsRemaining, setSecondsRemaining] = useState(20);
-  const [elapsedForTime, setElapsedForTime] = useState(0);
 
   const handleModeChange = (newMode: WorkoutMode) => {
     setMode(newMode);
@@ -28,12 +32,12 @@ export default function WorkoutEngine() {
     setCurrentRound(1);
     setIsWorkPhase(true);
     setAmrapCompletedRounds(0);
-    setElapsedForTime(0);
+    setIsEditingForTime(false);
 
     if (newMode === 'TABATA') setSecondsRemaining(tabataWork);
     if (newMode === 'AMRAP') setSecondsRemaining(amrapMinutes * 60);
     if (newMode === 'EMOM') setSecondsRemaining(emomInterval);
-    if (newMode === 'FOR_TIME') setSecondsRemaining(forTimeCap * 60);
+    if (newMode === 'FOR_TIME') setSecondsRemaining(forTimeTotalSeconds);
   };
 
   useEffect(() => {
@@ -75,36 +79,51 @@ export default function WorkoutEngine() {
               return 0;
             }
           });
-        } else if (mode === 'AMRAP') {
+        } else if (mode === 'AMRAP' || mode === 'FOR_TIME') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
             if (prev > 1) return prev - 1;
+            soundEngine.playRest();
             setIsActive(false);
             return 0;
-          });
-        } else if (mode === 'FOR_TIME') {
-          setElapsedForTime((prev) => {
-            if (forTimeCap > 0 && prev + 1 >= forTimeCap * 60) {
-              setIsActive(false);
-            }
-            return prev + 1;
           });
         }
       }, 1000);
     }
 
     return () => clearInterval(timer);
-  }, [isActive, mode, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds, forTimeCap]);
+  }, [isActive, mode, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds]);
 
   const resetTimer = () => {
     setIsActive(false);
     setCurrentRound(1);
     setIsWorkPhase(true);
     setAmrapCompletedRounds(0);
-    setElapsedForTime(0);
+    setIsEditingForTime(false);
+
     if (mode === 'TABATA') setSecondsRemaining(tabataWork);
     if (mode === 'AMRAP') setSecondsRemaining(amrapMinutes * 60);
     if (mode === 'EMOM') setSecondsRemaining(emomInterval);
+    if (mode === 'FOR_TIME') setSecondsRemaining(forTimeTotalSeconds);
+  };
+
+  const handleAdjustForTimeSeconds = (delta: number) => {
+    setForTimeTotalSeconds((prev) => {
+      const nextVal = Math.max(10, prev + delta);
+      if (!isActive) setSecondsRemaining(nextVal);
+      return nextVal;
+    });
+  };
+
+  const handleSaveCustomTime = () => {
+    const mins = Math.max(0, parseInt(editMinutes) || 0);
+    const secs = Math.max(0, Math.min(59, parseInt(editSeconds) || 0));
+    const total = mins * 60 + secs;
+    if (total > 0) {
+      setForTimeTotalSeconds(total);
+      if (!isActive) setSecondsRemaining(total);
+    }
+    setIsEditingForTime(false);
   };
 
   const formatTime = (sec: number) => {
@@ -115,6 +134,7 @@ export default function WorkoutEngine() {
 
   return (
     <div className="bg-[#0d2044] border border-blue-800/60 rounded-3xl p-6 sm:p-8 shadow-2xl text-white">
+      {/* Mode Selectors */}
       <div className="flex flex-wrap items-center justify-center gap-2 bg-[#061024] p-2 rounded-2xl mb-8 border border-blue-900/50">
         {(['TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
           <button
@@ -129,6 +149,7 @@ export default function WorkoutEngine() {
         ))}
       </div>
 
+      {/* Mode Status Pill */}
       <div className="text-center mb-4">
         {mode === 'TABATA' && (
           <span className={`text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full border ${
@@ -149,17 +170,63 @@ export default function WorkoutEngine() {
         )}
         {mode === 'FOR_TIME' && (
           <span className="text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-            TIME CAP: {forTimeCap} MIN
+            FOR TIME COUNTDOWN
           </span>
         )}
       </div>
 
-      <div className={`text-centefont-mono font-black text-8xl sm:text-9xl tracking-tight my-4 select-none ${
-        mode === 'TABATA' && !isWorkPhase ? 'text-amber-400' : 'text-white'
-      }`}>
-        {mode === 'FOR_TIME' ? formatTime(elapsedForTime) : formatTime(secondsRemaining)}
-      </div>
+      {/* Main Countdown Display */}
+      {isEditingForTime && mode === 'FOR_TIME' ? (
+        <div className="flex items-center justify-center gap-3 my-6">
+          <div className="flex flex-col items-center">
+            <span className="text-xs uppercase font-bold text-blue-300 mb-1">Minutes</span>
+            <input
+              type="number"
+              min="0"
+              max="99"
+              value={editMinutes}
+              onChange={(e) => setEditMinutes(e.target.value)}
+              className="w-24 text-center bg-[#061024] border border-blue-700 text-white font-mono font-black text-5xl sm:text-6xl rounded-2xl p-2 focus:outline-none focus:border-blue-400"
+            />
+          </div>
+          <span className="text-5xl font-mono font-black text-blue-400 mt-6">:</span>
+          <div className="flex flex-col items-center">
+            <span className="text-xs uppercase font-bold text-blue-300 mb-1">Seconds</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={editSeconds}
+              onChange={(e) => setEditSeconds(e.target.value)}
+              className="w-24 text-center bg-[#061024] border border-blue-700 text-white font-mono font-black text-5xl sm:text-6xl rounded-2xl p-2 focus:outline-none focus:border-blue-400"
+            />
+          </div>
+          <div className="flex flex-col gap-2 mt-6 ml-2">
+            <button
+              onClick={handleSaveCustomTime}
+              className="p-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white shadow-md transition"
+              title="Save Time"
+            >
+              <Check className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => setIsEditingForTime(false)}
+              className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 transition"
+              title="Cancel"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={`text-center font-mono font-black text-8xl sm:text-9xl tracking-tight my-4 select-none ${
+          mode === 'TABATA' && !isWorkPhase ? 'text-amber-400' : 'text-white'
+        }`}>
+          {formatTime(secondsRemaining)}
+        </div>
+      )}
 
+      {/* Sub-counters for AMRAP & Tabata */}
       {mode === 'TABATA' && (
         <div className="text-center text-xl font-bold text-blue-300 mb-6">
           Round <span className="text-white text-2xl font-black">{currentRound}</span> of {tabataRounds}
@@ -177,7 +244,29 @@ export default function WorkoutEngine() {
         </div>
       )}
 
+      {/* Quick Adjusters */}
       <div className="flex flex-wrap items-center justify-center gap-3 mb-8 text-xs sm:text-sm font-semibold text-blue-200">
+        {mode === 'FOR_TIME' && (
+          <>
+            <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
+              <span>Time: {formatTime(forTimeTotalSeconds)}</span>
+              <button onClick={() => handleAdjustForTimeSeconds(-30)} className="hover:text-white px-1 font-bold text-xs bg-blue-950/80 rounded py-0.5 border border-blue-800/40">-30s</button>
+              <button onClick={() => handleAdjustForTimeSeconds(30)} className="hover:text-white px-1 font-bold text-xs bg-blue-950/80 rounded py-0.5 border border-blue-800/40">+30s</button>
+            </div>
+            <button
+              onClick={() => {
+                setEditMinutes(Math.floor(forTimeTotalSeconds / 60).toString());
+                setEditSeconds((forTimeTotalSeconds % 60).toString().padStart(2, '0'));
+                setIsEditingForTime(true);
+              }}
+              className="flex items-center gap-1.5 bg-[#061024] hover:bg-blue-900/40 text-blue-300 border border-blue-900/50 px-3 py-1.5 rounded-xl transition"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Custom Time</span>
+            </button>
+          </>
+        )}
+
         {mode === 'TABATA' && (
           <>
             <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
@@ -222,6 +311,7 @@ export default function WorkoutEngine() {
         )}
       </div>
 
+      {/* Play / Pause / Reset Controls */}
       <div className="flex items-center justify-center gap-4">
         <button
           onClick={() => {
