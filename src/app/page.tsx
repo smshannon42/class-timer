@@ -12,8 +12,8 @@ export default function Home() {
   const [manualPeriodId, setManualPeriodId] = useState<string>('AUTO');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  useWakeLock();
 
+  const { isDimmed, isMobile } = useWakeLock();
   const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown(manualPeriodId);
 
   const toggleFullscreen = () => {
@@ -31,10 +31,24 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none">
-      <div className="max-w-4xl mx-auto w-full space-y-4">
+    <main className="relative min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none transition-opacity duration-1000">
+      
+      {/* 3-Minute Inactivity Dim & Blackout Overlay */}
+      {isDimmed && (
+        <div 
+          className={`fixed inset-0 z-50 transition-opacity duration-1000 pointer-events-none flex items-end justify-center pb-6 ${
+            isMobile ? 'bg-black opacity-100' : 'bg-black/85'
+          }`}
+        >
+          <span className="text-xs uppercase font-mono tracking-widest text-slate-500 animate-pulse">
+            Tap anywhere to wake display
+          </span>
+        </div>
+      )}
+
+      <div className={`max-w-4xl mx-auto w-full space-y-4 transition-all duration-1000 ${isDimmed && !isMobile ? 'opacity-25' : 'opacity-100'}`}>
         
-        {/* Streamlined Top Bar */}
+        {/* Top Bar */}
         <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-4 py-2.5 rounded-2xl backdrop-blur-md">
           <MustangWordmark />
 
@@ -73,7 +87,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Unified Class Hub Status Strip */}
+        {/* Class Hub Status Strip */}
         <div className="bg-[#001f5c]/90 border border-[#0047BA] rounded-2xl px-4 py-3 flex items-center justify-between shadow-xl">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#0047BA]/40 text-[#E32636]">
@@ -112,7 +126,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Workout Engine Hub */}
+        {/* Workout Engine */}
         <WorkoutEngine />
       </div>
 
