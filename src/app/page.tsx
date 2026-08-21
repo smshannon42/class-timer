@@ -4,6 +4,7 @@ import { Maximize2, Minimize2, SlidersHorizontal, Bell, Sparkles, AlertCircle, V
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
+import { MustangShield, MustangWordmark } from '@/components/MustangLogos';
 import { BELL_SCHEDULE } from '@/data/schedule';
 import { soundEngine } from '@/utils/audio';
 
@@ -33,40 +34,19 @@ export default function Home() {
     <main className="relative min-h-screen w-full bg-[#040c1e] text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none overflow-hidden">
       {/* Background Watermark Shield */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center opacity-10 z-0">
-        <img
-          src="/logo-shield.jpg"
-          alt="Ford MS Watermark"
-          className="w-[650px] max-w-[90vw] object-contain select-none"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = '/logo-shield.png';
-          }}
-        />
+        <MustangShield className="w-[550px] max-w-[85vw] h-auto" />
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto w-full">
         {/* Top Header Bar & Wordmark */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logo-shield.jpg"
-              alt="Ford MS Shield"
-              className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/logo-shield.png';
-              }}
-            />
-            <img
-              src="/logo-words.jpg"
-              alt="Ford Mustangs"
-              className="h-10 sm:h-12 object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/logo-words.png';
-              }}
-            />
+          <div className="flex items-center gap-3 bg-[#001f5c]/70 border border-[#0047BA]/80 py-2 px-4 rounded-2xl shadow-xl backdrop-blur-md">
+            <MustangShield className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-md" />
+            <MustangWordmark className="h-auto" />
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#001f5c]/80 border border-[#0047BA] rounded-xl px-3 py-1.5 shadow-lg backdrop-blur-sm">
+            <div className="flex items-center gap-2 bg-[#001f5c]/80 border border-[#0047BA] rounded-xl px-3 py-2 shadow-lg backdrop-blur-sm">
               <SlidersHorizontal className="w-4 h-4 text-[#E32636]" />
               <select
                 value={manualPeriodId}
@@ -89,12 +69,12 @@ export default function Home() {
               }`}
               title="Toggle Sound"
             >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             </button>
 
             <button
               onClick={toggleFullscreen}
-              className="flex items-center gap-1.5 bg-[#001f5c]/80 hover:bg-[#0047BA]/60 border border-[#0047BA] px-3 py-2 rounded-xl text-xs font-bold text-white transition shadow-md backdrop-blur-sm"
+              className="flex items-center gap-1.5 bg-[#001f5c]/80 hover:bg-[#0047BA]/60 border border-[#0047BA] px-3 py-2.5 rounded-xl text-xs font-bold text-white transition shadow-md backdrop-blur-sm"
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               <span className="hidden sm:inline">TV Mode</span>
@@ -102,7 +82,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Master Bell & Dismissal Banner */}
+        {/* Master Bell Banner */}
         {currentPeriod ? (
           <div className="bg-[#001f5c]/90 border-2 border-[#0047BA] rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between shadow-2xl gap-4 mb-6 backdrop-blur-md">
             <div className="flex items-center gap-3">
