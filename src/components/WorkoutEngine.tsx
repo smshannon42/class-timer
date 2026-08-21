@@ -362,8 +362,76 @@ export default function WorkoutEngine() {
         </div>
       )}
 
-      {/* Single-Row Controls */}
+      {/* Mode Specific Controls */}
       <div className="my-4">
+        {/* ENLARGED TABATA BUTTONS */}
+        {mode === 'TABATA' && (
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 max-w-xl mx-auto">
+            {/* Work Box */}
+            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
+              <span className="text-xs sm:text-sm uppercase font-black text-blue-300 tracking-wider">
+                Work <span className="text-white font-mono text-base sm:text-lg">{tabataWork}s</span>
+              </span>
+              <div className="grid grid-cols-2 gap-2 w-full mt-2">
+                <button
+                  onClick={() => { setTabataWork(w => Math.max(5, w - 5)); if (!isActive && isWorkPhase) setSecondsRemaining(w => Math.max(5, w - 5)); }}
+                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
+                >
+                  <Minus className="w-5 h-5 stroke-[3]" />
+                </button>
+                <button
+                  onClick={() => { setTabataWork(w => w + 5); if (!isActive && isWorkPhase) setSecondsRemaining(w => w + 5); }}
+                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
+                >
+                  <Plus className="w-5 h-5 stroke-[3]" />
+                </button>
+              </div>
+            </div>
+
+            {/* Rest Box */}
+            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
+              <span className="text-xs sm:text-sm uppercase font-black text-[#E32636] tracking-wider">
+                Rest <span className="text-white font-mono text-base sm:text-lg">{tabataRest}s</span>
+              </span>
+              <div className="grid grid-cols-2 gap-2 w-full mt-2">
+                <button
+                  onClick={() => setTabataRest(r => Math.max(5, r - 5))}
+                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
+                >
+                  <Minus className="w-5 h-5 stroke-[3]" />
+                </button>
+                <button
+                  onClick={() => setTabataRest(r => r + 5)}
+                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
+                >
+                  <Plus className="w-5 h-5 stroke-[3]" />
+                </button>
+              </div>
+            </div>
+
+            {/* Rounds Box */}
+            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
+              <span className="text-xs sm:text-sm uppercase font-black text-blue-300 tracking-wider">
+                Rounds <span className="text-white font-mono text-base sm:text-lg">{tabataRounds}</span>
+              </span>
+              <div className="grid grid-cols-2 gap-2 w-full mt-2">
+                <button
+                  onClick={() => setTabataRounds(r => Math.max(1, r - 1))}
+                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
+                >
+                  <Minus className="w-5 h-5 stroke-[3]" />
+                </button>
+                <button
+                  onClick={() => setTabataRounds(r => r + 1)}
+                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
+                >
+                  <Plus className="w-5 h-5 stroke-[3]" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* AMRAP Single-Row Bar */}
         {mode === 'AMRAP' && !isEditingAmrap && (
           <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
@@ -447,65 +515,6 @@ export default function WorkoutEngine() {
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>30s Run</span>
             </button>
-          </div>
-        )}
-
-        {/* TABATA Controls */}
-        {mode === 'TABATA' && (
-          <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
-            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-2 flex flex-col items-center">
-              <span className="text-[10px] uppercase font-black text-blue-300">Work {tabataWork}s</span>
-              <div className="flex items-center gap-2 mt-1">
-                <button
-                  onClick={() => { setTabataWork(w => Math.max(5, w - 5)); if (!isActive && isWorkPhase) setSecondsRemaining(w => Math.max(5, w - 5)); }}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
-                >
-                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-                <button
-                  onClick={() => { setTabataWork(w => w + 5); if (!isActive && isWorkPhase) setSecondsRemaining(w => w + 5); }}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-2 flex flex-col items-center">
-              <span className="text-[10px] uppercase font-black text-[#E32636]">Rest {tabataRest}s</span>
-              <div className="flex items-center gap-2 mt-1">
-                <button
-                  onClick={() => setTabataRest(r => Math.max(5, r - 5))}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
-                >
-                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-                <button
-                  onClick={() => setTabataRest(r => r + 5)}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-2 flex flex-col items-center">
-              <span className="text-[10px] uppercase font-black text-blue-300">Rounds {tabataRounds}</span>
-              <div className="flex items-center gap-2 mt-1">
-                <button
-                  onClick={() => setTabataRounds(r => Math.max(1, r - 1))}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
-                >
-                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-                <button
-                  onClick={() => setTabataRounds(r => r + 1)}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
