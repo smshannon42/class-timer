@@ -1,9 +1,11 @@
 'use client';
-import React, { useState } from 'react';
-import { Maximize2, Minimize2, SlidersHorizontal, Bell, Sparkles, Volume2, VolumeX, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Maximize2, Minimize2, SlidersHorizontal, Bell, Sparkles, Volume2, VolumeX, CheckCircle, Tv } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
+import { useRemoteSync } from '@/hooks/useRemoteSync';
 import WorkoutEngine from '@/components/WorkoutEngine';
+import RemoteModal from '@/components/RemoteModal';
 import { MustangWordmark } from '@/components/MustangLogos';
 import { BELL_SCHEDULE } from '@/data/schedule';
 import { soundEngine } from '@/utils/audio';
@@ -12,11 +14,21 @@ export default function Home() {
   const [manualPeriodId, setManualPeriodId] = useState<string>('AUTO');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isRemoteModalOpen, setIsRemoteModalOpen] = useState(false);
 
   const { isDimmed, isMobile } = useWakeLock();
   const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown(manualPeriodId);
+  const { roomCode, isConnected, isHost, initHost, connectToHost } = useRemoteSync();
 
-  // Check if active period is 3rd, 6th, or 7th
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const remoteParam = params.get('remote');
+    if (remoteParam) {
+      connectToHost(remoteParam);
+      setIsRemoteModalOpen(true);
+    }
+  }, []);
+
   const isSpecialPeriod = currentPeriod && ['p3', 'p6', 'p7', '3', '6', '7'].some(
     (key) => currentPeriod.id?.toLowerCase().includes(key) || currentPeriod.name?.toLowerCase().includes(key)
   );
@@ -38,7 +50,6 @@ export default function Home() {
   return (
     <main className="relative min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none transition-opacity duration-1000">
       
-      {/* Inactivity Overlay */}
       {isDimmed && (
         <div 
           className={`fixed inset-0 z-50 transition-opacity duration-1000 pointer-events-none flex items-end justify-center pb-6 ${
@@ -54,7 +65,7 @@ export default function Home() {
       <div className={`max-w-4xl mx-auto w-full space-y-4 transition-all duration-1000 ${isDimmed && !isMobile ? 'opacity-25' : 'opacity-100'}`}>
         
         {/* Top Header Controls */}
-        <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-4 py-2.5 rounded-2xl backdrop-blur-md">
+        <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-3 sm:px-4 py-2 rounded-2xl backdrop-blur-md">
           <MustangWordmark />
 
           <div className="flex items-center gap-2">
@@ -63,7 +74,7 @@ export default function Home() {
               <select
                 value={manualPeriodId}
                 onChange={(e) => setManualPeriodId(e.target.value)}
-                className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer max-w-[140px] sm:max-w-none"
+                className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer max-w-[130px] sm:max-w-none"
               >
                 <option value="AUTO" className="bg-[#020b1c]">Auto Schedule</option>
                 {BELL_SCHEDULE.map((p) => (
@@ -73,6 +84,20 @@ export default function Home() {
                 ))}
               </select>
             </div>
+
+            {/* Remote Sync Button */}
+            <button
+              onClick={() => setIsRemoteModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-xs transition ${
+                isConnected
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-md shadow-emerald-500/20'
+                  : 'bg-[#020b1c] hover:bg-[#0047BA]/40 text-blue-200 border-[#0047BA]'
+              }`}
+              title="Connect Remote"
+            >
+              <Tv className="w-4 h-4 text-[#E32636]" />
+              <span className="hidden sm:inline">{isConnected ? 'LINKED' : 'REMOTE'}</span>
+            </button>
 
             <button
               onClick={toggleMute}
@@ -94,8 +119,6 @@ export default function Home() {
 
         {/* CLASS HUB BANNER */}
         <div className="bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-5 sm:p-6 flex flex-wrap items-center justify-between shadow-2xl gap-4">
-          
-          {/* Active Period Name */}
           <div className="flex items-center gap-3.5">
             <div className="p-4 rounded-2xl bg-[#0047BA]/50 text-[#E32636] border border-white/10 shadow-md">
               <Bell className="w-8 h-8 stroke-[2.5]" />
@@ -110,20 +133,17 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Timers Section */}
           <div className="flex items-center gap-6 sm:gap-12">
-            {/* If 3rd, 6th, or 7th Period: ONLY Show Cleanup as 'Complete' */}
             {isSpecialPeriod ? (
               <div className="text-right">
-                <div className="flex items-center justify-end gap-1.5 text-xs sm:text-sm uppercase font-black tracking-wider text-[#E32636]">
+                <div className="flex items-center justify-end gap-1.5 text-xs sm:text-sm uppercase font-black tracking-wider text-emerald-400">
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" /> Complete
                 </div>
-                <div className={`text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none mt-1.5 ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
+                <div className="text-4xl sm:text-6xl font-mono font-black tracking-tight leading-none text-emerald-400 mt-1.5">
                   {cleanupSecLeft === 0 ? 'COMPLETE' : (cleanupTimeFormatted ?? bellTimeFormatted)}
                 </div>
               </div>
             ) : (
-              /* All Other Periods: Standard Dual Display */
               <>
                 {cleanupTimeFormatted !== null && (
                   <div className="text-right">
@@ -152,6 +172,17 @@ export default function Home() {
         {/* Workout Engine Hub */}
         <WorkoutEngine />
       </div>
+
+      {/* Remote Sync Modal */}
+      <RemoteModal
+        isOpen={isRemoteModalOpen}
+        onClose={() => setIsRemoteModalOpen(false)}
+        roomCode={roomCode}
+        isConnected={isConnected}
+        isHost={isHost}
+        onInitHost={initHost}
+        onConnectHost={connectToHost}
+      />
 
       <div className="text-center text-[11px] font-black text-blue-300/70 tracking-widest uppercase mt-3">
         Mustang Pulse • Ford Middle School PE & Athletics
