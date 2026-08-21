@@ -70,9 +70,11 @@ export default function WorkoutEngine() {
             if (prev > 1) return prev - 1;
 
             if (warmupPhase === 'RUN') {
-              soundEngine.playWorkGo();
+              // Finish Run Phase: Play chime, load 20s stretch interval, and PAUSE
+              soundEngine.playCleanupChime();
               setWarmupPhase('STRETCH');
               setStretchRound(1);
+              setIsActive(false);
               return 20;
             } else {
               if (stretchRound < totalStretchRounds) {
@@ -250,10 +252,10 @@ export default function WorkoutEngine() {
           </span>
         )}
         {mode === 'FOR_TIME' && (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
+          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4y-1 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
             FOR TIME COUNTDOWN
           </span>
-      )}
+        )}
       </div>
 
       {/* Editing Modes Overlay */}
@@ -367,7 +369,6 @@ export default function WorkoutEngine() {
         {/* ENLARGED TABATA BUTTONS */}
         {mode === 'TABATA' && (
           <div className="grid grid-cols-3 gap-2.5 sm:gap-3 max-w-xl mx-auto">
-            {/* Work Box */}
             <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
               <span className="text-xs sm:text-sm uppercase font-black text-blue-300 tracking-wider">
                 Work <span className="text-white font-mono text-base sm:text-lg">{tabataWork}s</span>
@@ -388,7 +389,6 @@ export default function WorkoutEngine() {
               </div>
             </div>
 
-            {/* Rest Box */}
             <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
               <span className="text-xs sm:text-sm uppercase font-black text-[#E32636] tracking-wider">
                 Rest <span className="text-white font-mono text-base sm:text-lg">{tabataRest}s</span>
@@ -409,7 +409,6 @@ export default function WorkoutEngine() {
               </div>
             </div>
 
-            {/* Rounds Box */}
             <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
               <span className="text-xs sm:text-sm uppercase font-black text-blue-300 tracking-wider">
                 Rounds <span className="text-white font-mono text-base sm:text-lg">{tabataRounds}</span>
@@ -525,14 +524,14 @@ export default function WorkoutEngine() {
               <span className="text-xs font-bold text-blue-200">Int: {emomInterval}s</span>
               <div className="flex gap-1.5">
                 <button onClick={() => { setEmomInterval(i => Math.max(30, i - 15)); if (!isActive) setSecondsRemaining(i => Math.max(30, i - 15)); }} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
-                <button onClick={() => { setEmomInterval(i => i + 15); if (!isActive) setSecondsRemaining(i => i + 15); }} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
+                <button onClick={() => { setEmomInterval(i => i + 15); if (!isActive) setSecondsRemaining(i => i + 15); }} className="hover:text-white"><Plus className="w-4 h-4" /></button>
               </div>
             </div>
             <div className="flex items-center justify-between bg-[#020b1c] px-3 py-2 rounded-xl border border-[#0047BA]">
               <span className="text-xs font-bold text-blue-200">Rnds: {emomRounds}</span>
               <div className="flex gap-1.5">
                 <button onClick={() => setEmomRounds(r => Math.max(1, r - 1))} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
-                <button onClick={() => setEmomRounds(r => r + 1)} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
+                <button onClick={() => setEmomRounds(r => r + 1)} className="hover:text-white"><Plus className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
