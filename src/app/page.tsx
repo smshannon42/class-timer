@@ -4,7 +4,7 @@ import { Maximize2, Minimize2, SlidersHorizontal, Bell, Sparkles, AlertCircle, V
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
-import { MustangShield, MustangWordmark } from '@/components/MustangLogos';
+import { MustangWordmark } from '@/components/MustangLogos';
 import { BELL_SCHEDULE } from '@/data/schedule';
 import { soundEngine } from '@/utils/audio';
 
@@ -31,19 +31,11 @@ export default function Home() {
   };
 
   return (
-    <main className="relative min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none overflow-hidden">
-      {/* Constant Background Logo Watermark */}
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center opacity-15 z-0">
-        <MustangShield className="w-[600px] max-w-[90vw] h-auto drop-shadow-[0_0_80px_rgba(0,71,186,0.4)]" />
-      </div>
-
-      <div className="relative z-10 max-w-5xl mx-auto w-full">
-        {/* Header Branding Bar */}
+    <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-4 sm:p-6 lg:p-8 select-none">
+      <div className="max-w-5xl mx-auto w-full">
+        {/* Header Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-[#001f5c]/80 border-2 border-[#0047BA] p-3 sm:p-4 rounded-2xl shadow-2xl backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <MustangShield className="w-12 h-12 sm:w-14 sm:h-14 drop-shadow-lg" />
-            <MustangWordmark />
-          </div>
+          <MustangWordmark />
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-[#020b1c] border border-[#0047BA] rounded-xl px-3 py-2 shadow-inner">
@@ -82,7 +74,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Master Bell & Cleanup Alert Banner */}
+        {/* Master Bell & Dismissal Banner */}
         {currentPeriod ? (
           <div className="bg-[#001f5c]/90 border-2 border-[#0047BA] rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between shadow-2xl gap-4 mb-6 backdrop-blur-md">
             <div className="flex items-center gap-3">
@@ -129,7 +121,7 @@ export default function Home() {
         <WorkoutEngine />
       </div>
 
-      <div className="relative z-10 text-center text-xs font-black text-blue-300/80 tracking-widest uppercase mt-6">
+      <div className="text-center text-xs font-black text-blue-300/80 tracking-widest uppercase mt-6">
         Ford Middle School Physical Education & Athletics
       </div>
     </main>
