@@ -3,10 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
 
-type WorkoutMode = 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
+type WorkoutMode = 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
 
 export default function WorkoutEngine() {
-  const [mode, setMode] = useState<WorkoutMode>('TABATA');
+  const [mode, setMode] = useState<WorkoutMode>('WARMUP');
+  
+  // Warm-Up Preset State (Run defaults to 3:00 = 180s, adjustable by +/-30s)
+  const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
+  const [warmupPhase, setWarmupPhase] = useState<'RUN' | 'STRETCH'>('RUN');
+  const [stretchRound, setStretchRound] = useState(1);
+  const totalStretchRounds = 6;
+
+  // Other Modes State
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
@@ -21,10 +29,11 @@ export default function WorkoutEngine() {
   const [editMinutes, setEditMinutes] = useState('5');
   const [editSeconds, setEditSeconds] = useState('00');
 
+  // Runtime State
   const [isActive, setIsActive] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
-  const [secondsRemaining, setSecondsRemaining] = useState(20);
+  const [secondsRemaining, setSecondsRemaining] = useState(180);
 
   const handleModeChange = (newMode: WorkoutMode) => {
     setMode(newMode);
@@ -33,7 +42,10 @@ export default function WorkoutEngine() {
     setIsWorkPhase(true);
     setAmrapCompletedRounds(0);
     setIsEditingForTime(false);
+    setWarmupPhase('RUN');
+    setStretchRound(1);
 
+    if (newMode === 'WARMUP') setSecondsRemaining(warmupRunSeconds);
     if (newMode === 'TABATA') setSecondsRemaining(tabataWork);
     if (newMode === 'AMRAP') setSecondsRemaining(amrapMinutes * 60);
     if (newMode === 'EMOM') setSecondsRemaining(emomInterval);
@@ -45,7 +57,29 @@ export default function WorkoutEngine() {
 
     if (isActive) {
       timer = setInterval(() => {
-        if (mode === 'TABATA') {
+        if (mode === 'WARMUP') {
+          setSecondsRemaining((prev) => {
+            if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+            if (prev > 1) return prev - 1;
+
+            if (warmupPhase === 'RUN') {
+              soundEngine.playWorkGo();
+              setWarmupPhase('STRETCH');
+              setStretchRound(1);
+              return 20; // 20s per stretch
+            } else {
+              if (stretchRound < totalStretchRounds) {
+                soundEngine.playWorkGo();
+                setStretchRound((r) => r + 1);
+                return 20;
+              } else {
+                soundEngine.playCleanupChime();
+                setIsActive(false);
+                return 0;
+              }
+            }
+          });
+        } else if (mode === 'TABATA') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
             if (prev > 1) return prev - 1;
@@ -92,7 +126,7 @@ export default function WorkoutEngine() {
     }
 
     return () => clearInterval(timer);
-  }, [isActive, mode, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds]);
+  }, [isActive, mode, warmupPhase, stretchRound, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds]);
 
   const resetTimer = () => {
     setIsActive(false);
@@ -100,11 +134,24 @@ export default function WorkoutEngine() {
     setIsWorkPhase(true);
     setAmrapCompletedRounds(0);
     setIsEditingForTime(false);
+    setWarmupPhase('RUN');
+    setStretchRound(1);
 
+    if (mode === 'WARMUP') setSecondsRemaining(warmupRunSeconds);
     if (mode === 'TABATA') setSecondsRemaining(tabataWork);
     if (mode === 'AMRAP') setSecondsRemaining(amrapMinutes * 60);
     if (mode === 'EMOM') setSecondsRemaining(emomInterval);
     if (mode === 'FOR_TIME') setSecondsRemaining(forTimeTotalSeconds);
+  };
+
+  const handleAdjustWarmupRunSeconds = (delta: number) => {
+    setWarmupRunSeconds((prev) => {
+      const nextVal = Math.max(30, prev + delta);
+      if (!isActive && warmupPhase === 'RUN') {
+        setSecondsRemaining(nextVal);
+      }
+      return nextVal;
+    });
   };
 
   const handleAdjustForTimeSeconds = (delta: number) => {
@@ -136,21 +183,30 @@ export default function WorkoutEngine() {
     <div className="bg-[#0d2044] border border-blue-800/60 rounded-3xl p-6 sm:p-8 shadow-2xl text-white">
       {/* Mode Selectors */}
       <div className="flex flex-wrap items-center justify-center gap-2 bg-[#061024] p-2 rounded-2xl mb-8 border border-blue-900/50">
-        {(['TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
+        {(['WARMUP', 'TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
           <button
             key={m}
             onClick={() => handleModeChange(m)}
-            className={`px-5 py-2.5 rounded-xl font-black text-sm tracking-wider transition ${
+            className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm tracking-wider transition ${
               mode === m ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-blue-300 hover:text-white'
             }`}
           >
-            {m.replace('_', ' ')}
+            {m === 'WARMUP' ? '🔥 WARM-UP' : m.replace('_', ' ')}
           </button>
         ))}
       </div>
 
       {/* Mode Status Pill */}
       <div className="text-center mb-4">
+        {mode === 'WARMUP' && (
+          <span className={`text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full border ${
+            warmupPhase === 'RUN'
+              ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+              : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+          }`}>
+            {warmupPhase === 'RUN' ? `RUN PHASE (${formatTime(warmupRunSeconds)})` : `DYNAMIC STRETCH ${stretchRound} OF 6`}
+          </span>
+        )}
         {mode === 'TABATA' && (
           <span className={`text-base sm:text-lg font-black uppercase tracking-widest px-6 py-1.5 rounded-full border ${
             isWorkPhase ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
@@ -223,13 +279,23 @@ export default function WorkoutEngine() {
         </div>
       ) : (
         <div className={`text-center font-mono font-black text-8xl sm:text-9xl tracking-tight my-4 select-none ${
-          mode === 'TABATA' && !isWorkPhase ? 'text-amber-400' : 'text-white'
+          (mode === 'TABATA' && !isWorkPhase) || (mode === 'WARMUP' && warmupPhase === 'RUN') ? 'text-amber-400' : 'text-white'
         }`}>
           {formatTime(secondsRemaining)}
         </div>
       )}
 
-      {/* Sub-counters for AMRAP & Tabata */}
+      {/* Sub-Info for Warmup, Tabata, & AMRAP */}
+      {mode === 'WARMUP' && (
+        <div className="text-center text-lg sm:text-xl font-bold text-blue-300 mb-6">
+          {warmupPhase === 'RUN' ? (
+            <span>Continuous Light Jog & Run</span>
+          ) : (
+            <span>Stretch <span className="text-white font-black text-2xl">{stretchRound}</span> of 6 (20s Switch)</span>
+          )}
+        </div>
+      )}
+
       {mode === 'TABATA' && (
         <div className="text-center text-xl font-bold text-blue-300 mb-6">
           Round <span className="text-white text-2xl font-black">{currentRound}</span> of {tabataRounds}
@@ -247,11 +313,36 @@ export default function WorkoutEngine() {
         </div>
       )}
 
-      {/* Big Adjusters & Custom Edit Bar */}
+      {/* Adjusters & Mode Controls */}
       <div className="my-6">
+        {/* Warm-Up Adjusters (+/- 30s for the Run) */}
+        {mode === 'WARMUP' && (
+          <div className="flex flex-col items-center justify-center gap-3 max-w-xl mx-auto">
+            <div className="flex flex-wrap items-center justify-center gap-4 w-full">
+              <button
+                onClick={() => handleAdjustWarmupRunSeconds(-30)}
+                className="flex-1 min-w-[130px] flex itemcenter justify-center gap-2 bg-[#061024] hover:bg-blue-950/80 active:scale-95 text-blue-300 hover:text-white border-2 border-blue-800/80 py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+              >
+                <Minus className="w-6 h-6 stroke-[3]" />
+                <span>30s Run</span>
+              </button>
+
+              <button
+                onClick={() => handleAdjustWarmupRunSeconds(30)}
+                className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#061024] hover:bg-blue-950/80 active:scale-95 text-blue-300 hover:text-white border-2 border-blue-800/80 py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
+              >
+                <Plus className="w-6 h-6 stroke-[3]" />
+                <span>30s Run</span>
+              </button>
+            </div>
+            <span className="text-xs uppercase font-bold tracking-wider text-blue-400">
+              Run: {formatTime(warmupRunSeconds)} + 6x Stretches (20s each)
+            </span>
+          </div>
+        )}
+
         {mode === 'FOR_TIME' && !isEditingForTime && (
           <div className="flex flex-wrap items-center justify-center gap-4 max-w-xl mx-auto">
-            {/* Big -30s Button */}
             <button
               onClick={() => handleAdjustForTimeSeconds(-30)}
               className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#061024] hover:bg-blue-950/80 active:scale-95 text-blue-300 hover:text-white border-2 border-blue-800/80 py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
@@ -260,7 +351,6 @@ export default function WorkoutEngine() {
               <span>30s</span>
             </button>
 
-            {/* Big Edit Time Button */}
             <button
               onClick={() => {
                 setEditMinutes(Math.floor(forTimeTotalSeconds / 60).toString());
@@ -273,7 +363,6 @@ export default function WorkoutEngine() {
               <span>EDIT TIME</span>
             </button>
 
-            {/* Big +30s Button */}
             <button
               onClick={() => handleAdjustForTimeSeconds(30)}
               className="flex-1 min-w-[130px] flex items-center justify-center gap-2 bg-[#061024] hover:bg-blue-950/80 active:scale-95 text-blue-300 hover:text-white border-2 border-blue-800/80 py-4 px-6 rounded-2xl text-xl sm:text-2xl font-mono font-black shadow-lg transition"
@@ -284,7 +373,6 @@ export default function WorkoutEngine() {
           </div>
         )}
 
-        {/* Tabata Adjusters */}
         {mode === 'TABATA' && (
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
             <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
@@ -305,7 +393,6 @@ export default function WorkoutEngine() {
           </div>
         )}
 
-        {/* AMRAP Adjusters */}
         {mode === 'AMRAP' && (
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
             <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
@@ -316,7 +403,6 @@ export default function WorkoutEngine() {
           </div>
         )}
 
-        {/* EMOM Adjusters */}
         {mode === 'EMOM' && (
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-semibold text-blue-200">
             <div className="flex items-center gap-2 bg-[#061024] px-3 py-1.5 rounded-xl border border-blue-900/50">
@@ -333,7 +419,7 @@ export default function WorkoutEngine() {
         )}
       </div>
 
-      {/* Play / Pause / Reset Controls */}
+      {/* Primary Action Buttons */}
       <div className="flex items-center justify-center gap-4">
         <button
           onClick={() => {
