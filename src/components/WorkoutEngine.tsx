@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
 import { RemoteSyncState } from '@/hooks/useRemoteSync';
 
@@ -22,27 +22,27 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [stretchRound, setStretchRound] = useState(1);
   const totalStretchRounds = 6;
 
-  // Tabata Settings (Default 20s work / 10s rest / 8 rounds)
+  // Tabata Settings (20s work / 10s rest / 8 rounds)
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
 
-  // AMRAP Settings (Default 3 mins / 180s)
+  // AMRAP Settings (Default 3 min / 180s)
   const [amrapTotalSeconds, setAmrapTotalSeconds] = useState(180);
 
   // EMOM Settings (Default 1 min / 60s)
   const [emomInterval, setEmomInterval] = useState(60);
   const [emomRounds, setEmomRounds] = useState(10);
 
-  // For Time Settings (Default 5 mins / 300s)
+  // For Time Settings (Default 5 min / 300s)
   const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(300);
 
-  // Post-Workout Rest Setting (Editable default 90s)
+  // Post-Workout Rest Setting (Default 90s)
   const [postRestSeconds, setPostRestSeconds] = useState(90);
   const [isEditingPostRest, setIsEditingPostRest] = useState(false);
   const [editPostRestInput, setEditPostRestInput] = useState('90');
 
-  // Custom minute/second edit modal
+  // Custom edit modal
   const [isEditingCustom, setIsEditingCustom] = useState(false);
   const [editMinutes, setEditMinutes] = useState('3');
   const [editSeconds, setEditSeconds] = useState('00');
@@ -114,6 +114,20 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     applyModeDefaults(newMode);
   };
 
+  const skipPrepCountdown = () => {
+    soundEngine.playWorkGo();
+    setEnginePhase('RUNNING');
+    let startSec = 180;
+    if (mode === 'WARMUP') startSec = warmupRunSeconds;
+    if (mode === 'TABATA') startSec = tabataWork;
+    if (mode === 'AMRAP') startSec = amrapTotalSeconds;
+    if (mode === 'EMOM') startSec = emomInterval;
+    if (mode === 'FOR_TIME') startSec = forTimeTotalSeconds;
+
+    setSecondsRemaining(startSec);
+    emit({ secondsRemaining: startSec, isActive: true, currentRound: 1, isWorkPhase: true });
+  };
+
   useEffect(() => {
     if (isProjectorView) return;
 
@@ -121,7 +135,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     if (isActive) {
       timer = setInterval(() => {
-        // 15s Prep Countdown (Yellow)
+        // 15s Yellow Pre-Warmup Countdown
         if (enginePhase === 'PREP_15') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
@@ -146,7 +160,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           return;
         }
 
-        // Post-Workout Rest Period (Red)
+        // Post-Workout 90s Recovery (Red)
         if (enginePhase === 'POST_REST_90') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
@@ -164,7 +178,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           return;
         }
 
-        // Active Modes
+        // Standard Workout Runtimes
         if (mode === 'TABATA') {
           setSecondsRemaining((prev) => {
             if (prev > 1) {
@@ -307,7 +321,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // Tabata 10s Adjusters
+  // Adjusters
   const adjustTabataWork = (delta: number) => {
     if (isActive) return;
     setTabataWork((prev) => {
@@ -330,7 +344,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setTabataRounds((prev) => Math.max(1, Math.min(30, prev + delta)));
   };
 
-  // AMRAP 30s Adjusters
   const adjustAmrapSeconds = (delta: number) => {
     if (isActive) return;
     setAmrapTotalSeconds((prev) => {
@@ -341,7 +354,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // EMOM 30s Adjusters & Round Stepper
   const adjustEmomInterval = (delta: number) => {
     if (isActive) return;
     setEmomInterval((prev) => {
@@ -357,7 +369,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setEmomRounds((prev) => Math.max(1, Math.min(60, prev + delta)));
   };
 
-  // For Time 30s Adjusters
   const adjustForTimeSeconds = (delta: number) => {
     if (isActive) return;
     setForTimeTotalSeconds((prev) => {
@@ -368,7 +379,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // Warmup 30s Adjusters
   const adjustWarmupRunSeconds = (delta: number) => {
     if (isActive) return;
     setWarmupRunSeconds((prev) => {
@@ -452,7 +462,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             🛑 {postRestSeconds}s POST-WORKOUT REST
           </span>
         ) : mode === 'TABATA' ? (
-          <span c={`text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full border ${
+          <span className={`text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full border ${
             isWorkPhase ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50'
           }`}>
             {isWorkPhase ? `WORK (${tabataWork}s)` : `REST (${tabataRest}s)`}
@@ -466,7 +476,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             ROUND {currentRound} OF {emomRounds} ({emomInterval}s)
           </span>
         ) : mode === 'AMRAP' ? (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full bg-[#E32636]/20 text-[#E32636] border border-[#E32636]/50">
+          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full bg-[#E32636]/20 text-[#border border-[#E32636]/50">
             AMRAP: {formatTime(amrapTotalSeconds)}
           </span>
         ) : (
@@ -476,64 +486,28 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         )}
       </div>
 
-      {/* Editing Custom Time Overlay (AMRAP / For Time) */}
-      {isEditingCustom ? (
-        <div className="flex flex-col items-center justify-center gap-3 my-5 bg-[#020b1c] p-5 rounded-3xl border-2 border-[#0047BA] shadow-xl max-w-sm mx-auto">
-          <span className="text-xs uppercase font-black tracking-widest text-[#E32636]">Set Custom Duration</span>
-          <div className="flex items-center justify-center gap-2">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] uppercase font-bold text-blue-300 mb-1">Mins</span>
-              <input
-                type="number"
-                min="0"
-                max="99"
-                value={editMinutes}
-                onChange={(e) => setEditMinutes(e.target.value)}
-                className="w-20 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-2 focus:outline-none focus:border-[#E32636]"
-              />
-            </div>
-            <span className="text-4xl font-mono font-black text-[#0047BA] mt-4">:</span>
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] uppercase font-bold text-blue-300 mb-1">Secs</span>
-              <input
-                type="number"
-                min="0"
-                max="59"
-                value={editSeconds}
-                onChange={(e) => setEditSeconds(e.target.value)}
-                className="w-20 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-2 focus:outline-none focus:border-[#E32636]"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-3 mt-2 w-full justify-center">
-            <button
-              type="button"
-              onClick={handleSaveCustom}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition text-xs cursor-pointer"
-            >
-              <Check className="w-4 h-4" /> Save
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsEditingCustom(false)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 font-bold transition text-xs cursor-pointer"
-            >
-              <X className="w-4 h-4" /> Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className={`text-center font-mono font-black tracking-tight my-2 select-none ${
-          isProjectorView ? 'text-[15vw] leading-none' : 'text-8xl sm:text-9xl'
-        } ${getTimerTextColor()}`}>
-          {formatTime(secondsRemaining)}
-        </div>
-      )}
+      {/* Main Countdown Display */}
+      <div className={`text-center font-mono font-black tracking-tight my-2 select-none ${
+        isProjectorView ? 'text-[15vw] leading-none' : 'text-8xl sm:text-9xl'
+      } ${getTimerTextColor()}`}>
+        {formatTime(secondsRemaining)}
+      </div>
 
-      {/* Subtitles & Recovery Editor */}
+      {/* Subtitles & Skip Button */}
       <div className="text-center text-sm sm:text-base font-bold text-blue-200 mb-4">
         {enginePhase === 'PREP_15' ? (
-          <span className="text-amber-300 font-bold">Get In Position</span>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-amber-300 font-bold">Get In Position</span>
+            {!isProjectorView && (
+              <button
+                type="button"
+                onClick={skipPrepCountdown}
+                className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
+              >
+                <FastForward className="w-3.5 h-3.5 fill-current" /> SKIP PREP
+              </button>
+            )}
+          </div>
         ) : enginePhase === 'POST_REST_90' ? (
           <div className="flex items-center justify-center gap-2">
             <span className="text-[#E32636] font-bold">Heart Rate Recovery</span>
@@ -546,7 +520,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 }}
                 className="text-xs bg-[#020b1c] px-2 py-0.5 rounded border border-[#E32636]/50 text-white flex items-center gap-1 cursor-pointer"
               >
-                <Edit3 className="w-3 h-3" /> Edit Rest
+                <Edit3 className="w-3.5 h-3.5" /> Edit Rest
               </button>
             )}
           </div>
@@ -578,12 +552,12 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* TABATA Specific Controls (±10s work/rest & ±1 round) */}
+      {/* TABATA Specific Controls */}
       {!isProjectorView && !isActive && mode === 'TABATA' && (
         <div className="space-y-2 max-w-md mx-auto mb-4">
           <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-2 rounded-2xl">
-              <span className="text-xs font-black uppcase text-blue-300 ml-1">Work: {tabataWork}s</span>
+              <span className="text-xs font-black uppercase text-blue-300 ml-1">Work: {tabataWork}s</span>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => adjustTabataWork(-10)} className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white">
                   <Minus className="w-3.5 h-3.5" />
@@ -621,7 +595,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* AMRAP Specific Controls (±30s & Manual Edit) */}
+      {/* AMRAP Specific Controls */}
       {!isProjectorView && !isActive && !isEditingCustom && mode === 'AMRAP' && (
         <div className="grid grid-cols-3 gap-2 max-w-md mx-auto mb-4">
           <button
@@ -647,7 +621,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <button
             type="button"
             onClick={() => adjustAmrapSeconds(30)}
-            className="flex items-center justiy-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>30s</span>
@@ -655,7 +629,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* EMOM Specific Controls (±30s Interval & ±1 Round Stepper) */}
+      {/* EMOM Specific Controls */}
       {!isProjectorView && !isActive && mode === 'EMOM' && (
         <div className="space-y-2 max-w-md mx-auto mb-4">
           <div className="grid grid-cols-3 gap-2">
@@ -694,7 +668,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* FOR TIME Specific Controls (±30s & Manual Edit) */}
+      {/* FOR TIME Specific Controls */}
       {!isProjectorView && !isActive && !isEditingCustom && mode === 'FOR_TIME' && (
         <div className="grid grid-cols-3 gap-2 max-w-md mx-auto mb-4">
           <button
@@ -712,7 +686,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               setEditSeconds((forTimeTotalSeconds % 60).toString().padStart(2, '0'));
               setIsEditingCustom(true);
             }}
-            className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
+            className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>EDIT</span>
@@ -728,7 +702,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* WARMUP Specific Controls (±30s Run Adjusters) */}
+      {/* WARMUP Specific Controls */}
       {!isProjectorView && !isActive && mode === 'WARMUP' && (
         <div className="grid grid-cols-2 gap-2 max-w-md mx-auto mb-4">
           <button
