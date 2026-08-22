@@ -477,7 +477,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           </span>
         ) : mode === 'EMOM' ? (
           <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA]/40 text-white border-2 border-[#0047BA]">
-            ROUND {currentRound} OFunds} ({emomInterval}s)
+            ROUND {currentRound} OF {emomRounds} ({emomInterval}s)
           </span>
         ) : mode === 'AMRAP' ? (
           <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50">
@@ -488,9 +488,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             FOR TIME: {formatTime(forTimeTotalSeconds)}
           </span>
         )}
-      </div>
-
-      {/* Editing Custom Time Modal */}
+      </d   {/* Editing Custom Time Modal */}
       {isEditingCustom ? (
         <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#020b1c] p-6 rounded-3xl border-2 border-[#0047BA] shadow-2xl max-w-md mx-auto">
           <span className="text-sm uppercase font-black tracking-widest text-[#E32636]">Set Custom Duration</span>
