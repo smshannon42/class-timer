@@ -452,7 +452,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             🛑 {postRestSeconds}s POST-WORKOUT REST
           </span>
         ) : mode === 'TABATA' ? (
-          <span className={`text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full border ${
+          <span c={`text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full border ${
             isWorkPhase ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50'
           }`}>
             {isWorkPhase ? `WORK (${tabataWork}s)` : `REST (${tabataRest}s)`}
@@ -511,7 +511,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               onClick={handleSaveCustom}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition text-xs cursor-pointer"
             >
-              <Check c="w-4 h-4" /> Save
+              <Check className="w-4 h-4" /> Save
             </button>
             <button
               type="button"
