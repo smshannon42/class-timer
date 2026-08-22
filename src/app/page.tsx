@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX, Radio } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
@@ -12,6 +12,7 @@ export default function Home() {
   const [manualPeriodId, setManualPeriodId] = useState<string>('AUTO');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isCasting, setIsCasting] = useState(false);
   useWakeLock();
 
   const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown(manualPeriodId);
@@ -28,6 +29,15 @@ export default function Home() {
     const nextMute = !isMuted;
     setIsMuted(nextMute);
     soundEngine.isMuted = nextMute;
+  };
+
+  const handleOpenProjector = () => {
+    setIsCasting(true);
+    // Opens a clean projector/second monitor viewport window
+    const win = window.open(window.location.href, '_blank', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+    if (win) {
+      win.focus();
+    }
   };
 
   return (
@@ -55,11 +65,25 @@ export default function Home() {
               </select>
             </div>
 
+            {/* Projector Broadcast Antenna Button */}
+            <button
+              onClick={handleOpenProjector}
+              className={`p-2 rounded-xl border transition flex items-center gap-1 ${
+                isCasting
+                  ? 'bg-[#E32636] text-white border-white/40 shadow-lg shadow-[#E32636]/50 animate-pulse'
+                  : 'bg-[#020b1c] text-blue-300 hover:text-white border-[#0047BA]'
+              }`}
+              title="Push to Projector / External Screen"
+            >
+              <Radio className="w-4 h-4" />
+            </button>
+
             <button
               onClick={toggleMute}
               className={`p-2 rounded-xl border transition ${
                 isMuted ? 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50' : 'bg-[#020b1c] text-emerald-400 border-[#0047BA]'
               }`}
+              title="Toggle Audio"
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -67,6 +91,7 @@ export default function Home() {
             <button
               onClick={toggleFullscreen}
               className="p-2 bg-[#020b1c] hover:bg-[#0047BA]/40 border border-[#0047BA] rounded-xl text-white transition"
+              title="Fullscreen Mode"
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
