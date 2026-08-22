@@ -2,8 +2,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient, RealtimeChannel } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vdrxlienzhlmvwzsdcmk.supabase.co';
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_j1TPjY8brWt1fz2UGGVxAA_ksJ1tqdL';
+// Public browser-safe Supabase credentials bundled directly
+const SUPABASE_URL = 'https://vdrxlienzhlmvwzsdcmk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_j1TPjY8brWt1fz2UGGVxAA_ksJ1tqdL';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
