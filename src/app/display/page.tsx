@@ -7,7 +7,7 @@ import WorkoutEngine from '@/components/WorkoutEngine';
 
 export default function DisplayPage() {
   const { peerId, isConnected, incomingSync } = useRemoteSync(true);
-  const { entPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown('AUTO');
+  const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown('AUTO');
 
   return (
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-6 lg:p-10 select-none">
@@ -39,9 +39,9 @@ export default function DisplayPage() {
         <div className="flex items-center gap-12">
           {cleanupTimeFormatted !== null && (
             <div className="text-right">
-              <div className="text-base uppercase font-black text-[#E32636] mb-1">Cleanup Alert</div>
+              <div className="text-base uppercase font-black text-[#E32636] mb-1">Done Working Out</div>
               <div className={`text-5xl lg:text-6xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
-                {cleanupSecLeft === 0 ? 'NOW' : cleanupTimeFormatted}
+                {cleanupSecLeft === 0 ? 'DONE' : cleanupTimeFormatted}
               </div>
             </div>
           )}

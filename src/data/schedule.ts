@@ -9,14 +9,6 @@ export interface Period {
   cleanupMinute: number;
 }
 
-// Ford Cardio Weights Mon-Fri Period Schedule
-// Target workout end / cleanup times:
-// 1st Period: Done at 8:52
-// 3rd Period: Done at 9:38
-// 6th Period: Done at 1:38 (13:38)
-// 7th Period: Done at 2:28 (14:28)
-// 8th Period: Done at 3:25 (15:25)
-
 export const BELL_SCHEDULE: Period[] = [
   {
     id: 'p1',

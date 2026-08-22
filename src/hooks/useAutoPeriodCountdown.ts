@@ -1,68 +1,78 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { BELL_SCHEDULE, ClassPeriod } from '@/data/schedule';
+import { BELL_SCHEDULE, Period } from '@/data/schedule';
 
-export function useAutoPeriodCountdown(overridePeriodId: string = 'AUTO') {
-  const [currentPeriod, setCurrentPeriod] = useState<ClassPeriod | null>(null);
-  const [cleanupSecLeft, setCleanupSecLeft] = useState<number | null>(null);
+export function useAutoPeriodCountdown(manualPeriodId: string = 'AUTO') {
+  const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
+  const [isPassingPeriod, setIsPassingPeriod] = useState(false);
   const [bellSecLeft, setBellSecLeft] = useState<number>(0);
-  const [isPassingPeriod, setIsPassingPeriod] = useState<boolean>(false);
+  const [cleanupSecLeft, setCleanupSecLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    const updateTimes = () => {
+    const updateCountdown = () => {
       const now = new Date();
       const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
-      const toDaySeconds = (timeStr: string) => {
-        const [h, m] = timeStr.split(':').map(Number);
-        return h * 3600 + m * 60;
-      };
-
-      let active: ClassPeriod | undefined;
-
-      if (overridePeriodId !== 'AUTO') {
-        active = BELL_SCHEDULE.find((p) => p.id === overridePeriodId);
-      } else {
-        active = BELL_SCHEDULE.find((p) => {
-          const start = toDaySeconds(p.startTime);
-          const end = toDaySeconds(p.endTime);
-          return currentSeconds >= start && currentSeconds < end;
-        });
+      if (manualPeriodId !== 'AUTO') {
+        const manualP = BELL_SCHEDULE.find((p) => p.id === manualPeriodId);
+        if (manualP) {
+          const pEndSec = manualP.endHour * 3600 + manualP.endMinute * 60;
+          const pCleanSec = manualP.cleanupHour * 3600 + manualP.cleanupMinute * 60;
+          
+          setCurrentPeriod(manualP);
+          setIsPassingPeriod(false);
+          setBellSecLeft(Math.max(0, pEndSec - currentSeconds));
+          setCleanupSecLeft(currentSeconds < pCleanSec ? pCleanSec - currentSeconds : 0);
+          return;
+        }
       }
 
-      if (active) {
-        setIsPassingPeriod(false);
-        setCurrentPeriod(active);
-        const endSec = toDaySeconds(active.endTime);
-        setBellSecLeft(Math.max(0, endSec - currentSeconds));
+      let foundActive: Period | null = null;
+      let nextPeriod: Period | null = null;
 
-        if (active.cleanupTime) {
-          const cleanupSec = toDaySeconds(active.cleanupTime);
-          const diff = cleanupSec - currentSeconds;
-          setCleanupSecLeft(diff > 0 ? diff : 0);
-        } else {
-          setCleanupSecLeft(null);
+      for (let i = 0; i < BELL_SCHEDULE.length; i++) {
+        const p = BELL_SCHEDULE[i];
+        const pStartSec = p.startHour * 3600 + p.startMinute * 60;
+        const pEndSec = p.endHour * 3600 + p.endMinute * 60;
+
+        if (currentSeconds >= pStartSec && currentSeconds < pEndSec) {
+          foundActive = p;
+          break;
         }
+
+        if (currentSeconds < pStartSec && !nextPeriod) {
+          nextPeriod = p;
+        }
+      }
+
+      if (foundActive) {
+        const pEndSec = foundActive.endHour * 3600 + foundActive.endMinute * 60;
+        const pCleanSec = foundActive.cleanupHour * 3600 + foundActive.cleanupMinute * 60;
+
+        setCurrentPeriod(foundActive);
+        setIsPassingPeriod(false);
+        setBellSecLeft(Math.max(0, pEndSec - currentSeconds));
+        setCleanupSecLeft(currentSeconds < pCleanSec ? pCleanSec - currentSeconds : 0);
+      } else if (nextPeriod) {
+        const nextStartSec = nextPeriod.startHour * 3600 + nextPeriod.startMinute * 60;
+        setCurrentPeriod(nextPeriod);
+        setIsPassingPeriod(true);
+        setBellSecLeft(Math.max(0, nextStartSec - currentSeconds));
+        setCleanupSecLeft(null);
       } else {
-        const upcoming = BELL_SCHEDULE.find((p) => toDaySeconds(p.startTime) > currentSeconds);
-        if (upcoming) {
-          setIsPassingPeriod(true);
-          setCurrentPeriod(upcoming);
-          setBellSecLeft(toDaySeconds(upcoming.startTime) - currentSeconds);
-          setCleanupSecLeft(null);
-        } else {
-          setIsPassingPeriod(false);
-          setCurrentPeriod(null);
-        }
+        setCurrentPeriod(null);
+        setIsPassingPeriod(false);
+        setBellSecLeft(0);
+        setCleanupSecLeft(null);
       }
     };
 
-    updateTimes();
-    const interval = setInterval(updateTimes, 1000);
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [overridePeriodId]);
+  }, [manualPeriodId]);
 
-  const formatMinSec = (sec: number) => {
+  const formatSeconds = (sec: number) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
@@ -71,8 +81,8 @@ export function useAutoPeriodCountdown(overridePeriodId: string = 'AUTO') {
   return {
     currentPeriod,
     isPassingPeriod,
-    bellTimeFormatted: formatMinSec(bellSecLeft),
-    cleanupTimeFormatted: cleanupSecLeft !== null ? formatMinSec(cleanupSecLeft) : null,
+    bellTimeFormatted: formatSeconds(bellSecLeft),
+    cleanupTimeFormatted: cleanupSecLeft !== null ? formatSeconds(cleanupSecLeft) : null,
     cleanupSecLeft,
     bellSecLeft,
   };
