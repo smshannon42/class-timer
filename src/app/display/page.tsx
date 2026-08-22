@@ -6,7 +6,7 @@ import { MustangWordmark } from '@/components/MustangLogos';
 import WorkoutEngine from '@/components/WorkoutEngine';
 
 export default function DisplayPage() {
-  const { peerId, isConnected, lastCommand } = useRemoteSync(true);
+  const { peerId, isConnected, incomingSync } = useRemoteSync(true);
   const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown('AUTO');
 
   return (
@@ -57,7 +57,7 @@ export default function DisplayPage() {
         </div>
       </div>
 
-      <WorkoutEngine incomingCommand={lastCommand} isProjectorView={true} />
+      <WorkoutEngine incomingState={incomingSync} isProjectorView={true} />
 
       <div className="text-center text-sm font-black text-blue-400/60 tracking-widest uppercase">
         Ford Middle School Physical Education & Athletics

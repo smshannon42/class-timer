@@ -14,17 +14,13 @@ type WorkoutMode = 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
 
 export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorView = false }: WorkoutEngineProps) {
   const [mode, setMode] = useState<WorkoutMode>('WARMUP');
-  
-  // Lifecycle Phase: IDLE | PREP_15 | RUNNING | POST_REST_90 | FINISHED
   const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_15' | 'RUNNING' | 'POST_REST_90' | 'FINISHED'>('IDLE');
 
-  // Warmup settings
   const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
   const [warmupPhase, setWarmupPhase] = useState<'RUN' | 'STRETCH'>('RUN');
   const [stretchRound, setStretchRound] = useState(1);
   const totalStretchRounds = 6;
 
-  // Mode durations
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
@@ -33,12 +29,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [emomRounds, setEmomRounds] = useState(10);
   const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(300);
 
-  // Custom edit dialog
   const [isEditingCustom, setIsEditingCustom] = useState(false);
   const [editMinutes, setEditMinutes] = useState('5');
   const [editSeconds, setEditSeconds] = useState('00');
 
-  // Ticker runtime
   const [isActive, setIsActive] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
@@ -59,7 +53,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     }
   };
 
-  // Mirror display sync
   useEffect(() => {
     if (isProjectorView && incomingState) {
       setMode(incomingState.mode);
@@ -105,7 +98,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     applyModeDefaults(newMode);
   };
 
-  // Main countdown engine
   useEffect(() => {
     if (isProjectorView) return;
 
@@ -113,7 +105,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     if (isActive) {
       timer = setInterval(() => {
-        // 15-second Pre-Countdown
         if (enginePhase === 'PREP_15') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
@@ -138,7 +129,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           return;
         }
 
-        // Automatic 90-second Post Rest
         if (enginePhase === 'POST_REST_90') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
@@ -156,7 +146,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           return;
         }
 
-        // Active Workouts
         if (mode === 'WARMUP') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
@@ -398,7 +387,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 animate-pulse">
             ⚠️ PRE-COUNTDOWN: 15s PREP
           </span>
-        ) : enginePhase === 'POST_REST_90' ? (
+        ) :ePhase === 'POST_REST_90' ? (
           <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border border-[#E32636]/50 animate-pulse">
             🛑 90s POST-WORKOUT REST
           </span>
@@ -451,13 +440,13 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 min="0"
                 max="59"
                 value={editSeconds}
-           hange={(e) => setEditSeconds(e.target.value)}
+                onChange={(e) => setEditSeconds(e.target.value)}
                 className="w-20 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-2 focus:outline-none focus:border-[#E32636]"
               />
             </div>
           </div>
           <div className="flex items-center gap-3 mt-2 w-full justify-center">
-            <button
+          <button
               type="button"
               onClick={handleSaveCustom}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition text-xs"
@@ -529,7 +518,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <button
             type="button"
             onClick={() => adjustSeconds(15)}
-            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition cursor-pointer"
+            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hove:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>15s</span>
