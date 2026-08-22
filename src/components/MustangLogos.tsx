@@ -7,7 +7,7 @@ export function MustangWordmark({ className = "h-auto" }: { className?: string }
         FORD
       </span>
       <span className="text-[10px] sm:text-xs font-black tracking-[0.28em] text-[#E32636] drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] mt-0.5">
-        MUSTANGS
+        PULSE
       </span>
     </div>
   );
