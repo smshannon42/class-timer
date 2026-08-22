@@ -14,34 +14,46 @@ export interface RemoteState {
 }
 
 export function useRemoteSync(isHost = false) {
-  const [pin, setPin] = useState<string>('');
-  const [isConnected, setIsConnected] = useState(false);
+  // Generate a clean 4-digit PIN immediately for host screens
+  const [pin, setPin] = useState<string>(() => {
+    if (typeof window !== 'undefined' && isHost) {
+      return Math.floor(1000 + Math.random() * 9000).toString();
+    }
+    return '';
+  });
+  
+  const [isBrokerReady, setIsBrokerReady] = useState(false);
+  const [hasRemoteClient, setHasRemoteClient] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [incomingState, setIncomingState] = useState<Partial<RemoteState> | null>(null);
 
   const clientRef = useRef<MqttClient | null>(null);
-  const activePinRef = useRef<string>('');
+  const activePinRef = useRef<string>(pin);
 
   useEffect(() => {
+    if (pin) {
+      activePinRef.current = pin;
+    }
+  }, [pin]);
+
+  useEffect(() => {
+    const currentPin = activePinRef.current;
+    
     // Connect to public secure WebSocket broker
     const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
       clientId: `fp_${isHost ? 'host' : 'remote'}_${Math.random().toString(16).substring(2, 8)}`,
       clean: true,
-      connectTimeout: 4000,
-      reconnectPeriod: 1000,
+      connectTimeout: 5000,
+      reconnectPeriod: 2000,
     });
 
     clientRef.current = client;
 
     client.on('connect', () => {
-      if (isHost) {
-        // Generate random 4-digit PIN for host
-        const hostPin = Math.floor(1000 + Math.random() * 9000).toString();
-        setPin(hostPin);
-        activePinRef.current = hostPin;
-        client.subscribe(`ford-pulse/${hostPin}`, { qos: 0 });
-        setIsConnected(true);
+      setIsBrokerReady(true);
+      if (isHost && currentPin) {
+        client.subscribe(`ford-pulse/${currentPin}`, { qos: 0 });
       }
     });
 
@@ -49,6 +61,9 @@ export function useRemoteSync(isHost = false) {
       try {
         const payload = JSON.parse(message.toString());
         setIncomingState({ ...payload });
+        if (isHost) {
+          setHasRemoteClient(true);
+        }
       } catch (err) {
         console.error('Failed to parse incoming sync:', err);
       }
@@ -56,7 +71,7 @@ export function useRemoteSync(isHost = false) {
 
     client.on('error', (err) => {
       console.error('MQTT error:', err);
-      setErrorMessage('Sync relay connection error.');
+      setErrorMessage('Relay connection error.');
     });
 
     return () => {
@@ -64,7 +79,7 @@ export function useRemoteSync(isHost = false) {
     };
   }, [isHost]);
 
-  // Connect client (Phone) to Display PIN
+  // Connect Phone Remote to the Host PIN
   const connectToHost = useCallback((targetPin: string) => {
     if (!clientRef.current) return;
     setIsConnecting(true);
@@ -75,13 +90,14 @@ export function useRemoteSync(isHost = false) {
 
     client.subscribe(`ford-pulse/${cleanPin}`, { qos: 0 }, (err) => {
       if (err) {
-        setErrorMessage('Failed to link PIN.');
+        setErrorMessage('Failed to connect to PIN.');
         setIsConnecting(false);
       } else {
         setPin(cleanPin);
         activePinRef.current = cleanPin;
-        setIsConnected(true);
         setIsConnecting(false);
+        // Send a handshake ping so the display acknowledges the connection
+        client.publish(`ford-pulse/${cleanPin}`, JSON.stringify({ ping: true }), { qos: 0 });
       }
     });
   }, []);
@@ -104,7 +120,7 @@ export function useRemoteSync(isHost = false) {
 
   return {
     peerId: pin,
-    isConnected,
+    isConnected: isHost ? hasRemoteClient : Boolean(pin && isBrokerReady),
     isConnecting,
     errorMessage,
     connectToHost,
