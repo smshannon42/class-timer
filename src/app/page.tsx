@@ -4,7 +4,6 @@ import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX, Ra
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
-import { MustangWordmark } from '@/components/MustangLogos';
 import { BELL_SCHEDULE } from '@/data/schedule';
 import { soundEngine } from '@/utils/audio';
 import { useRemoteSync } from '@/hooks/useRemoteSync';
@@ -45,9 +44,61 @@ export default function Home() {
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none">
       <div className="max-w-5xl mx-auto w-full space-y-4">
         
-        {/* Top Header Bar with ATP Logo */}
+        {/* TOP HEADER WITH DIRECT ATP VECTOR LOGO */}
         <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-3.5 py-2.5 rounded-2xl backdrop-blur-md">
-          <MustangWordmark />
+          <div className="flex items-center gap-2.5 select-none">
+            {/* Tactical Hex Heartbeat Logo Icon */}
+            <div className="relative flex items-center justify-center w-10 h-10 bg-[#020b1c] border-2 border-[#0047BA] rounded-xl shadow-md p-1">
+              <svg
+                viewBox="0 0 100 100"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-full h-full"
+              >
+                <polygon
+                  points="50,6 88,27 88,73 50,94 12,73 12,27"
+                  stroke="#0047BA"
+                  strokeWidth="7"
+                  strokeLinejoin="round"
+                  fill="#020b1c"
+                />
+                <polygon
+                  points="50,14 80,31 80,69 50,86 20,69 20,31"
+                  fill="#FFFFFF"
+                />
+                <path
+                  d="M6 50H36"
+                  stroke="#0047BA"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M36 50L44 38L52 68L60 22L68 56L72 50H94"
+                  stroke="#E32636"
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            {/* Brand Typography */}
+            <div className="flex flex-col leading-none">
+              <div className="flex items-center gap-1.5">
+                <span className="font-black text-xl tracking-tight text-white font-mono">
+                  ALLEN
+                </span>
+                <span className="bg-[#E32636] text-white text-[9px] font-black px-1.5 py-0.5 rounded tracking-widest font-mono shadow-sm">
+                  ATP
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-[9px] font-black tracking-widest uppercase text-blue-300 mt-1">
+                <span className="text-[#E32636]">TEMPO</span>
+                <span className="text-white/40">|</span>
+                <span className="text-white">PULSE</span>
+              </div>
+            </div>
+          </div>
 
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-1 bg-[#020b1c] border border-[#0047BA]/70 rounded-xl px-2 py-1.5">
@@ -159,7 +210,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Oversized Class Period Header */}
+        {/* Period Countdown Box */}
         <div className="bg-[#001f5c]/90 border-2 border-[#0047BA] rounded-3xl px-6 py-5 flex items-center justify-between shadow-2xl">
           <div>
             <div className="text-xs sm:text-sm uppercase font-black tracking-widest text-blue-300 mb-1">
@@ -198,7 +249,7 @@ export default function Home() {
       </div>
 
       <div className="text-center text-[10px] sm:text-xs font-black text-blue-400/60 tracking-widest uppercase mt-3">
-        Ford Middle School • Cardio Weights
+        Allen Tempo Pulse • ATP Timer
       </div>
     </main>
   );
