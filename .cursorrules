@@ -1,0 +1,7 @@
+# Project Context: Ford Middle School PE & Athletics Class Timer
+- Framework: Next.js (App Router), React, TypeScript, Tailwind CSS, Lucide Icons.
+- Design: Dark tactical Ford Mustang theme (#020b1c navy base, #0047BA royal accent, #E32636 red highlight).
+- Audio: Native Web Audio API oscillators only (soundEngine in src/utils/audio.ts). No external audio files.
+- Remote Architecture: Lightweight HTTPS REST sync with 4-digit room PINs. Avoid direct WebRTC or raw WebSockets that get blocked by school firewalls.
+- Build Standard: Always maintain clean TypeScript strict compliance and verify builds with `npm run build` before committing.
+- Clean Code: Never leave unused imports, unhandled Promise rejections, or deprecated metadata fields.
