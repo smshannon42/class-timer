@@ -1,5 +1,11 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { createClient, RealtimeChannel } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://vdrxlienzhlmvwzsdcmk.supabase.co';
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_j1TPjY8brWt1fz2UGGVxAA_ksJ1tqdL';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export interface RemoteCommand {
   action: 'START' | 'PAUSE' | 'RESET' | 'SET_MODE' | 'ADJUST_SECONDS' | 'SET_CUSTOM_TIME' | 'PING';
@@ -16,6 +22,7 @@ export function useRemoteSync(isHost = false) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastCommand, setLastCommand] = useState<RemoteCommand | null>(null);
 
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const activePinRef = useRef<string>('');
 
   useEffect(() => {
@@ -25,23 +32,27 @@ export function useRemoteSync(isHost = false) {
     setPin(hostPin);
     activePinRef.current = hostPin;
 
-    const eventSource = new EventSource(`https://ntfy.sh/fordpulse_${hostPin}/sse`);
+    const channel = supabase.channel(`ford_room_${hostPin}`, {
+      config: {
+        broadcast: { self: false },
+      },
+    });
 
-    eventSource.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data);
-        if (payload.message) {
-          const cmd: RemoteCommand = JSON.parse(payload.message);
-          setLastCommand(cmd);
-          setIsConnected(true);
+    channelRef.current = channel;
+
+    channel
+      .on('broadcast', { event: 'command' }, ({ payload }) => {
+        setLastCommand(payload);
+        setIsConnected(true);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`[Host] Ready on channel ford_room_${hostPin}`);
         }
-      } catch (err) {
-        console.error('Error parsing command:', err);
-      }
-    };
+      });
 
     return () => {
-      eventSource.close();
+      supabase.removeChannel(channel);
     };
   }, [isHost]);
 
@@ -52,40 +63,48 @@ export function useRemoteSync(isHost = false) {
     setIsConnecting(true);
     setErrorMessage(null);
 
-    try {
-      const pingCmd: RemoteCommand = { action: 'PING', timestamp: Date.now() };
-      const res = await fetch(`https://ntfy.sh/fordpulse_${cleanPin}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(pingCmd),
-      });
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
 
-      if (res.ok) {
+    const channel = supabase.channel(`ford_room_${cleanPin}`, {
+      config: {
+        broadcast: { self: false },
+      },
+    });
+
+    channelRef.current = channel;
+
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
         setPin(cleanPin);
         activePinRef.current = cleanPin;
         setIsConnected(true);
         setIsConnecting(false);
-      } else {
-        setErrorMessage('Failed to connect to PIN.');
+
+        await channel.send({
+          type: 'broadcast',
+          event: 'command',
+          payload: { action: 'PING', timestamp: Date.now() },
+        });
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setErrorMessage('Failed to connect to PIN. Try again.');
         setIsConnecting(false);
       }
-    } catch {
-      setErrorMessage('Network connection error.');
-      setIsConnecting(false);
-    }
+    });
   }, []);
 
-  const sendCommand = useCallback((cmd: Omit<RemoteCommand, 'timestamp'>) => {
-    const targetPin = activePinRef.current || pin;
-    if (!targetPin) return;
+  const sendCommand = useCallback(async (cmd: Omit<RemoteCommand, 'timestamp'>) => {
+    const currentChannel = channelRef.current;
+    if (!currentChannel) return;
 
     const payload: RemoteCommand = { ...cmd, timestamp: Date.now() };
-    fetch(`https://ntfy.sh/fordpulse_${targetPin}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(payload),
-    }).catch((err) => console.error('Failed to send command:', err));
-  }, [pin]);
+    await currentChannel.send({
+      type: 'broadcast',
+      event: 'command',
+      payload,
+    });
+  }, []);
 
   return {
     peerId: pin,
