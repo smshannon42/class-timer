@@ -1,14 +1,16 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'Mustang Pulse | Ford Middle School PE',
-  description: 'Smart Class & Workout Interval Timer for Ford Middle School Athletics',
-  manifest: '/manifest.json',
-  themeColor: '#0047BA',
+  title: 'Ford Middle School PE Timer',
+  description: 'Physical Education and Athletics Interval Timer',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#020b1c',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -18,7 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className="bg-[#020b1c] text-white antialiased selection:bg-[#0047BA]">
+        {children}
+      </body>
     </html>
   );
 }

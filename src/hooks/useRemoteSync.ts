@@ -12,7 +12,6 @@ export interface RemoteSyncState {
   timestamp: number;
 }
 
-// Public cloud key-value relay (Standard HTTPS)
 const FIREBASE_REST_URL = 'https://class-timer-remote-default-rtdb.firebaseio.com';
 
 export function useRemoteSync(isHost = false) {
@@ -25,7 +24,7 @@ export function useRemoteSync(isHost = false) {
   const activePinRef = useRef<string>('');
   const lastTimestampRef = useRef<number>(0);
 
-  // Host (Projector): Assign clean 4-digit PIN & poll REST endpoint
+  // Host Display (Projector): Assign clean 4-digit PIN and poll
   useEffect(() => {
     if (!isHost) return;
 
@@ -33,7 +32,7 @@ export function useRemoteSync(isHost = false) {
     setPin(hostPin);
     activePinRef.current = hostPin;
 
-    const pollInterval = setInterval(async () => {
+    const interval = setInterval(async () => {
       try {
         const res = await fetch(`${FIREBASE_REST_URL}/rooms/${hostPin}.json?ts=${Date.now()}`, {
           cache: 'no-store',
@@ -47,11 +46,11 @@ export function useRemoteSync(isHost = false) {
           }
         }
       } catch {
-        // Silent recovery on standard network blips
+        // Silent recovery on network blips
       }
     }, 300);
 
-    return () => clearInterval(pollInterval);
+    return () => clearInterval(interval);
   }, [isHost]);
 
   // Client (Phone): Connect to PIN
@@ -112,7 +111,7 @@ export function useRemoteSync(isHost = false) {
         body: JSON.stringify(payload),
       });
     } catch (err) {
-      console.error('HTTPS Remote sync failed:', err);
+      console.error('Remote sync error:', err);
     }
   }, [pin]);
 
