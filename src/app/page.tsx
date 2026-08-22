@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX, Radio, Check, X } from 'lucide-react';
+import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX, Radio, Check, X, Loader2 } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
@@ -17,7 +17,7 @@ export default function Home() {
   const [pinInput, setPinInput] = useState('');
   useWakeLock();
 
-  const { isConnected, connectToHost } = useRemoteSync(false);
+  const { isConnected, isConnecting, errorMessage, connectToHost, broadcastState } = useRemoteSync(false);
   const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown(manualPeriodId);
 
   const toggleFullscreen = () => {
@@ -34,16 +34,16 @@ export default function Home() {
     soundEngine.isMuted = nextMute;
   };
 
-  const handlePairWithDisplay = () => {
+  const handlePairWithDisplay = (e: React.FormEvent) => {
+    e.preventDefault();
     if (pinInput.trim().length > 0) {
       connectToHost(pinInput.trim());
-      setIsAntennaModalOpen(false);
     }
   };
 
   return (
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none">
-      <div className="max-w-4xl mx-auto w-full space-y-4">
+      <div className="max-w-5xl mx-auto w-full space-y-4">
         
         {/* Top Header Bar */}
         <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-4 py-2.5 rounded-2xl backdrop-blur-md">
@@ -68,8 +68,9 @@ export default function Home() {
 
             {/* Antenna Connect Button */}
             <button
+              type="button"
               onClick={() => setIsAntennaModalOpen(true)}
-              className={`p-2 rounded-xl border transition flex items-center gap-1 ${
+              className={`p-2 rounded-xl border transition flex items-center gap-1 cursor-pointer ${
                 isConnected
                   ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-600/40'
                   : 'bg-[#020b1c] text-blue-300 hover:text-white border-[#0047BA]'
@@ -80,6 +81,7 @@ export default function Home() {
             </button>
 
             <button
+              type="button"
               onClick={toggleMute}
               className={`p-2 rounded-xl border transition ${
                 isMuted ? 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50' : 'bg-[#020b1c] text-emerald-400 border-[#0047BA]'
@@ -89,6 +91,7 @@ export default function Home() {
             </button>
 
             <button
+              type="button"
               onClick={toggleFullscreen}
               className="p-2 bg-[#020b1c] hover:bg-[#0047BA]/40 border border-[#0047BA] rounded-xl text-white transition"
             >
@@ -100,74 +103,102 @@ export default function Home() {
         {/* Pairing Modal */}
         {isAntennaModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-[#001f5c] border-2 border-[#0047BA] p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+            <form onSubmit={handlePairWithDisplay} className="bg-[#001f5c] border-2 border-[#0047BA] p-6 rounded-3xl max-w-sm w-full shadow-2xl">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-lg font-black text-white">Projector Antenna Link</span>
-                <button onClick={() => setIsAntennaModalOpen(false)} className="text-blue-300 hover:text-white">
+                <span className="text-lg font-black text-white">Projector Link</span>
+                <button type="button" onClick={() => setIsAntennaModalOpen(false)} className="text-blue-300 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-blue-200 mb-4">
-                Open <span className="text-emerald-400 font-mono">/display</span> on the projector computer, then type its 4-digit PIN here:
+              
+              <p className="text-xs text-blue-200 mb-3">
+                Open <span className="text-emerald-400 font-mono">/display</span> on the TV/Projector, then enter the PIN:
               </p>
+
               <input
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="4-digit PIN"
                 maxLength={6}
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                className="w-full text-center bg-[#020b1c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-3 focus:outline-none focus:border-[#E32636] mb-4"
+                className="w-full text-center bg-[#020b1c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-3 focus:outline-none focus:border-[#E32636] mb-3"
+                autoFocus
               />
+
+              {errorMessage && (
+                <p className="text-xs text-[#E32636] font-bold text-center mb-3">
+                  {errorMessage}
+                </p>
+              )}
+
+              {isConnected && (
+                <p className="text-xs text-emerald-400 font-bold text-center mb-3">
+                  ✓ Connected to Screen!
+                </p>
+              )}
+
               <button
-                onClick={handlePairWithDisplay}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#0047BA] hover:bg-[#003da5] rounded-xl text-white font-black transition shadow-lg"
+                type="submit"
+                disabled={isConnecting || pinInput.trim().length === 0}
+                className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-black transition shadow-lg cursor-pointer ${
+                  isConnected 
+                    ? 'bg-emerald-600' 
+                    : 'bg-[#0047BA] hover:bg-[#003da5] disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
               >
-                <Check className="w-5 h-5" />
-                Connect Screen
+                {isConnecting ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Connecting...</>
+                ) : isConnected ? (
+                  <><Check className="w-5 h-5" /> Connected</>
+                ) : (
+                  <><Check className="w-5 h-5" /> Connect Screen</>
+                )}
               </button>
-            </div>
+            </form>
           </div>
         )}
 
-        {/* Unified Class Hub Status Strip */}
-        <div className="bg-[#001f5c]/90 border border-[#0047BA] rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl">
+        {/* Large Class Hub Status Strip */}
+        <div className="bg-[#001f5c]/90 border-2 border-[#0047BA] rounded-3xl px-6 py-5 flex items-center justify-between shadow-2xl">
           <div>
-            <div className="text-[10px] sm:text-xs uppercase font-black tracking-widest text-blue-300">
-              {isPassingPeriod ? 'Next Class In' : 'Active Class Period'}
+            <div className="text-xs sm:text-sm uppercase font-black tracking-widest text-blue-300 mb-1">
+              {isPassingPeriod ? 'NEXT CLASS IN' : 'ACTIVE CLASS PERIOD'}
             </div>
-            <div className="text-lg sm:text-2xl font-black text-white leading-tight">
+            <div className="text-2xl sm:text-4xl lg:text-5xl font-black text-white leading-none">
               {currentPeriod ? currentPeriod.name : 'Off Schedule'}
             </div>
           </div>
 
-          <div className="flex items-center gap-5 sm:gap-8">
+          <div className="flex items-center gap-6 sm:gap-10">
             {cleanupTimeFormatted !== null && (
               <div className="text-right">
-                <div className="flex items-center justify-end gap-1 text-[10px] uppercase font-black text-[#E32636]">
-                  <Sparkles className="w-3 h-3" /> Cleanup
+                <div className="flex items-center justify-end gap-1 text-xs uppercase font-black text-[#E32636] mb-1">
+                  <Sparkles className="w-3.5 h-3.5" /> Cleanup
                 </div>
-                <div className={`text-xl sm:text-2xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
+                <div className={`text-3xl sm:text-5xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
                   {cleanupSecLeft === 0 ? 'NOW' : cleanupTimeFormatted}
                 </div>
               </div>
             )}
 
             <div className="text-right">
-              <div className="text-[10px] uppercase font-black text-blue-300">
-                {isPassingPeriod ? 'Starts In' : 'Period Bell'}
+              <div className="text-xs sm:text-sm uppercase font-black text-blue-300 mb-1">
+                {isPassingPeriod ? 'STARTS IN' : 'PERIOD BELL'}
               </div>
-              <div className="text-xl sm:text-2xl font-mono font-black text-emerald-400">
+              <div className="text-4xl sm:text-6xl lg:text-7xl font-mono font-black text-emerald-400 leading-none">
                 {bellTimeFormatted}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Workout Engine Hub */}
-        <WorkoutEngine />
+        {/* Workout Timer */}
+        <WorkoutEngine onBroadcast={broadcastState} />
       </div>
 
-      <div className="text-center text-[10px] font-black text-blue-400/60 tracking-widest uppercase mt-3">
+      <div className="text-center text-[10px] sm:text-xs font-black text-blue-400/60 tracking-widest uppercase mt-3">
         Ford Middle School • Cardio Weights
       </div>
     </main>
