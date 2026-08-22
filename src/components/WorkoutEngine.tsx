@@ -477,10 +477,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           </span>
         ) : mode === 'EMOM' ? (
           <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA]/40 text-white border-2 border-[#0047BA]">
-            ROUND {currentRound} OF {emomRounds} ({emomInterval}s)
+            ROUND {currentRound} OFunds} ({emomInterval}s)
           </span>
         ) : mode === 'AMRAP' ? (
-  <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50">
+          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50">
             AMRAP: {formatTime(amrapTotalSeconds)}
           </span>
         ) : (
@@ -649,7 +649,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* DOUBLE-SIZED AMRAP CONTROLS (±30s & Edit) */}
+      {/* DOUBLE-SIZED AMRAP CONTROLS */}
       {!isProjectorView && !isActive && !isEditingCustom && mode === 'AMRAP' && (
         <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto mb-6">
           <button
@@ -675,7 +675,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <button
             type="button"
             onClick={() => adjustAmrapSeconds(30)}
-            classame="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
+            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
           >
             <Plus className="w-6 h-6 stroke-[3]" />
             <span>30s</span>
