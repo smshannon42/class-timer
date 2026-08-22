@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "lucide-react": "^1.33.0",
+    "mqtt": "^5.15.2",
     "next": "16.3.2",
     "peerjs": "^1.5.5",
     "qrcode.react": "^4.2.0",

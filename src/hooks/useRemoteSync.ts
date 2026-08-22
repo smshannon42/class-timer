@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useRef, useState, useCallback } from 'react';
-import type { DataConnection, Peer } from 'peerjs';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import mqtt, { MqttClient } from 'mqtt';
 
 export interface RemoteState {
   mode: 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
@@ -14,87 +14,96 @@ export interface RemoteState {
 }
 
 export function useRemoteSync(isHost = false) {
-  const [peerId, setPeerId] = useState<string>('');
+  const [pin, setPin] = useState<string>('');
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const connRef = useRef<DataConnection | null>(null);
-  const peerRef = useRef<Peer | null>(null);
   const [incomingState, setIncomingState] = useState<Partial<RemoteState> | null>(null);
 
+  const clientRef = useRef<MqttClient | null>(null);
+  const activePinRef = useRef<string>('');
+
   useEffect(() => {
-    let peer: Peer;
+    // Connect to public secure WebSocket broker
+    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+      clientId: `fp_${isHost ? 'host' : 'remote'}_${Math.random().toString(16).substring(2, 8)}`,
+      clean: true,
+      connectTimeout: 4000,
+      reconnectPeriod: 1000,
+    });
 
-    import('peerjs').then(({ default: Peer }) => {
-      const customId = isHost ? Math.floor(1000 + Math.random() * 9000).toString() : undefined;
-      peer = customId ? new Peer(customId) : new Peer();
-      peerRef.current = peer;
+    clientRef.current = client;
 
-      peer.on('open', (id) => {
-        setPeerId(id);
-      });
-
-      peer.on('error', (err) => {
-        console.error('Peer error:', err);
-        setErrorMessage('Connection failed. Please retry.');
-        setIsConnecting(false);
-      });
-
+    client.on('connect', () => {
       if (isHost) {
-        peer.on('connection', (conn) => {
-          connRef.current = conn;
-          setIsConnected(true);
-
-          conn.on('data', (data: any) => {
-            setIncomingState({ ...data });
-          });
-
-          conn.on('close', () => setIsConnected(false));
-        });
+        // Generate random 4-digit PIN for host
+        const hostPin = Math.floor(1000 + Math.random() * 9000).toString();
+        setPin(hostPin);
+        activePinRef.current = hostPin;
+        client.subscribe(`ford-pulse/${hostPin}`, { qos: 0 });
+        setIsConnected(true);
       }
+    });
+
+    client.on('message', (topic, message) => {
+      try {
+        const payload = JSON.parse(message.toString());
+        setIncomingState({ ...payload });
+      } catch (err) {
+        console.error('Failed to parse incoming sync:', err);
+      }
+    });
+
+    client.on('error', (err) => {
+      console.error('MQTT error:', err);
+      setErrorMessage('Sync relay connection error.');
     });
 
     return () => {
-      peerRef.current?.destroy();
+      client.end(true);
     };
   }, [isHost]);
 
+  // Connect client (Phone) to Display PIN
   const connectToHost = useCallback((targetPin: string) => {
-    if (!peerRef.current) return;
+    if (!clientRef.current) return;
     setIsConnecting(true);
     setErrorMessage(null);
 
-    const conn = peerRef.current.connect(targetPin, { reliable: true });
-    connRef.current = conn;
+    const client = clientRef.current;
+    const cleanPin = targetPin.trim();
 
-    conn.on('open', () => {
-      setIsConnected(true);
-      setIsConnecting(false);
-    });
-
-    conn.on('error', () => {
-      setErrorMessage('Could not find display. Check PIN.');
-      setIsConnecting(false);
-    });
-
-    conn.on('close', () => {
-      setIsConnected(false);
-      setIsConnecting(false);
-    });
-  }, []);
-
-  const sendState = useCallback((state: Partial<RemoteState>) => {
-    if (connRef.current && connRef.current.open) {
-      try {
-        connRef.current.send(state);
-      } catch (err) {
-        console.error('Error broadcasting state:', err);
+    client.subscribe(`ford-pulse/${cleanPin}`, { qos: 0 }, (err) => {
+      if (err) {
+        setErrorMessage('Failed to link PIN.');
+        setIsConnecting(false);
+      } else {
+        setPin(cleanPin);
+        activePinRef.current = cleanPin;
+        setIsConnected(true);
+        setIsConnecting(false);
       }
-    }
+    });
   }, []);
+
+  // Broadcast state changes directly over WebSocket
+  const sendState = useCallback((state: Partial<RemoteState>) => {
+    const currentPin = activePinRef.current || pin;
+    if (!clientRef.current || !currentPin) return;
+
+    try {
+      clientRef.current.publish(
+        `ford-pulse/${currentPin}`,
+        JSON.stringify(state),
+        { qos: 0, retain: false }
+      );
+    } catch (err) {
+      console.error('Failed to publish sync payload:', err);
+    }
+  }, [pin]);
 
   return {
-    peerId,
+    peerId: pin,
     isConnected,
     isConnecting,
     errorMessage,
