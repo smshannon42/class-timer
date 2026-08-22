@@ -13,41 +13,45 @@ interface WorkoutEngineProps {
 type WorkoutMode = 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
 
 export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorView = false }: WorkoutEngineProps) {
-  const [mode, setMode] = useState<WorkoutMode>('TABATA');
+  const [mode, setMode] = useState<WorkoutMode>('WARMUP');
   const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_15' | 'RUNNING' | 'POST_REST_90' | 'FINISHED'>('IDLE');
 
-  // Warmup state
+  // Warmup settings
   const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
   const [warmupPhase, setWarmupPhase] = useState<'RUN' | 'STRETCH'>('RUN');
   const [stretchRound, setStretchRound] = useState(1);
   const totalStretchRounds = 6;
 
-  // Tabata Settings (10s intervals default)
+  // Tabata Settings (Default 20s work / 10s rest / 8 rounds)
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
 
-  // Post-Workout Rest Setting (Editable)
+  // AMRAP Settings (Default 3 mins / 180s)
+  const [amrapTotalSeconds, setAmrapTotalSeconds] = useState(180);
+
+  // EMOM Settings (Default 1 min / 60s)
+  const [emomInterval, setEmomInterval] = useState(60);
+  const [emomRounds, setEmomRounds] = useState(10);
+
+  // For Time Settings (Default 5 mins / 300s)
+  const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(300);
+
+  // Post-Workout Rest Setting (Editable default 90s)
   const [postRestSeconds, setPostRestSeconds] = useState(90);
   const [isEditingPostRest, setIsEditingPostRest] = useState(false);
   const [editPostRestInput, setEditPostRestInput] = useState('90');
 
-  // Other modes
-  const [amrapTotalSeconds, setAmrapTotalSeconds] = useState(300);
-  const [emomInterval, setEmomInterval] = useState(60);
-  const [emomRounds, setEmomRounds] = useState(10);
-  const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(300);
-
-  // Custom edit dialog
+  // Custom minute/second edit modal
   const [isEditingCustom, setIsEditingCustom] = useState(false);
-  const [editMinutes, setEditMinutes] = useState('5');
+  const [editMinutes, setEditMinutes] = useState('3');
   const [editSeconds, setEditSeconds] = useState('00');
 
   // Runtime ticker
   const [isActive, setIsActive] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
-  const [secondsRemaining, setSecondsRemaining] = useState(20);
+  const [secondsRemaining, setSecondsRemaining] = useState(180);
 
   const emit = (override: Partial<Omit<RemoteSyncState, 'timestamp'>> = {}) => {
     if (onBroadcast) {
@@ -87,7 +91,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setIsEditingCustom(false);
     setIsEditingPostRest(false);
 
-    let sec = 20;
+    let sec = 180;
     if (newMode === 'WARMUP') sec = warmupRunSeconds;
     if (newMode === 'TABATA') sec = tabataWork;
     if (newMode === 'AMRAP') sec = amrapTotalSeconds;
@@ -117,7 +121,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     if (isActive) {
       timer = setInterval(() => {
-        // 15s Lead-in Preparation Countdown
+        // 15s Prep Countdown (Yellow)
         if (enginePhase === 'PREP_15') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
@@ -129,8 +133,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
             soundEngine.playWorkGo();
             setEnginePhase('RUNNING');
-            let startSec = tabataWork;
+            let startSec = 180;
             if (mode === 'WARMUP') startSec = warmupRunSeconds;
+            if (mode === 'TABATA') startSec = tabataWork;
             if (mode === 'AMRAP') startSec = amrapTotalSeconds;
             if (mode === 'EMOM') startSec = emomInterval;
             if (mode === 'FOR_TIME') startSec = forTimeTotalSeconds;
@@ -159,7 +164,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           return;
         }
 
-        // Active Workout Modes
+        // Active Modes
         if (mode === 'TABATA') {
           setSecondsRemaining((prev) => {
             if (prev > 1) {
@@ -182,7 +187,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 emit({ isWorkPhase: true, currentRound: nextR, secondsRemaining: tabataWork, isActive: true });
                 return tabataWork;
               } else {
-                // Final round completed -> Trigger Post-Rest Period in RED
                 soundEngine.playRest();
                 setEnginePhase('POST_REST_90');
                 emit({ secondsRemaining: postRestSeconds, isActive: true });
@@ -285,8 +289,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setWarmupPhase('RUN');
     setStretchRound(1);
 
-    let sec = tabataWork;
+    let sec = 180;
     if (mode === 'WARMUP') sec = warmupRunSeconds;
+    if (mode === 'TABATA') sec = tabataWork;
     if (mode === 'AMRAP') sec = amrapTotalSeconds;
     if (mode === 'EMOM') sec = emomInterval;
     if (mode === 'FOR_TIME') sec = forTimeTotalSeconds;
@@ -302,7 +307,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // 10s step adjusters for Tabata
+  // Tabata 10s Adjusters
   const adjustTabataWork = (delta: number) => {
     if (isActive) return;
     setTabataWork((prev) => {
@@ -325,39 +330,70 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setTabataRounds((prev) => Math.max(1, Math.min(30, prev + delta)));
   };
 
-  const adjust15s = (delta: number) => {
+  // AMRAP 30s Adjusters
+  const adjustAmrapSeconds = (delta: number) => {
     if (isActive) return;
-    if (mode === 'WARMUP') {
-      setWarmupRunSeconds((prev) => {
-        const next = Math.max(15, prev + delta);
-        if (warmupPhase === 'RUN') {
-          setSecondsRemaining(next);
-          emit({ secondsRemaining: next });
-        }
-        return next;
-      });
-    } else if (mode === 'AMRAP') {
-      setAmrapTotalSeconds((prev) => {
-        const next = Math.max(15, prev + delta);
+    setAmrapTotalSeconds((prev) => {
+      const next = Math.max(30, prev + delta);
+      setSecondsRemaining(next);
+      emit({ secondsRemaining: next });
+      return next;
+    });
+  };
+
+  // EMOM 30s Adjusters & Round Stepper
+  const adjustEmomInterval = (delta: number) => {
+    if (isActive) return;
+    setEmomInterval((prev) => {
+      const next = Math.max(30, prev + delta);
+      setSecondsRemaining(next);
+      emit({ secondsRemaining: next });
+      return next;
+    });
+  };
+
+  const adjustEmomRounds = (delta: number) => {
+    if (isActive) return;
+    setEmomRounds((prev) => Math.max(1, Math.min(60, prev + delta)));
+  };
+
+  // For Time 30s Adjusters
+  const adjustForTimeSeconds = (delta: number) => {
+    if (isActive) return;
+    setForTimeTotalSeconds((prev) => {
+      const next = Math.max(30, prev + delta);
+      setSecondsRemaining(next);
+      emit({ secondsRemaining: next });
+      return next;
+    });
+  };
+
+  // Warmup 30s Adjusters
+  const adjustWarmupRunSeconds = (delta: number) => {
+    if (isActive) return;
+    setWarmupRunSeconds((prev) => {
+      const next = Math.max(30, prev + delta);
+      if (warmupPhase === 'RUN') {
         setSecondsRemaining(next);
         emit({ secondsRemaining: next });
-        return next;
-      });
-    } else if (mode === 'EMOM') {
-      setEmomInterval((prev) => {
-        const next = Math.max(15, prev + delta);
-        setSecondsRemaining(next);
-        emit({ secondsRemaining: next });
-        return next;
-      });
-    } else if (mode === 'FOR_TIME') {
-      setForTimeTotalSeconds((prev) => {
-        const next = Math.max(15, prev + delta);
-        setSecondsRemaining(next);
-        emit({ secondsRemaining: next });
-        return next;
-      });
+      }
+      return next;
+    });
+  };
+
+  const handleSaveCustom = () => {
+    const mins = Math.max(0, parseInt(editMinutes) || 0);
+    const secs = Math.max(0, Math.min(59, parseInt(editSeconds) || 0));
+    const total = mins * 60 + secs;
+    if (total > 0) {
+      if (mode === 'AMRAP') setAmrapTotalSeconds(total);
+      if (mode === 'FOR_TIME') setForTimeTotalSeconds(total);
+      if (!isActive) {
+        setSecondsRemaining(total);
+        emit({ secondsRemaining: total });
+      }
     }
+    setIsEditingCustom(false);
   };
 
   const handleSavePostRest = () => {
@@ -440,12 +476,59 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         )}
       </div>
 
-      {/* Main Countdown Display */}
-      <div className={`text-center font-mono font-black tracking-tight my-2 select-none ${
-        isProjectorView ? 'text-[15vw] leading-none' : 'text-8xl sm:text-9xl'
-      } ${getTimerTextColor()}`}>
-        {formatTime(secondsRemaining)}
-      </div>
+      {/* Editing Custom Time Overlay (AMRAP / For Time) */}
+      {isEditingCustom ? (
+        <div className="flex flex-col items-center justify-center gap-3 my-5 bg-[#020b1c] p-5 rounded-3xl border-2 border-[#0047BA] shadow-xl max-w-sm mx-auto">
+          <span className="text-xs uppercase font-black tracking-widest text-[#E32636]">Set Custom Duration</span>
+          <div className="flex items-center justify-center gap-2">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] uppercase font-bold text-blue-300 mb-1">Mins</span>
+              <input
+                type="number"
+                min="0"
+                max="99"
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(e.target.value)}
+                className="w-20 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-2 focus:outline-none focus:border-[#E32636]"
+              />
+            </div>
+            <span className="text-4xl font-mono font-black text-[#0047BA] mt-4">:</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] uppercase font-bold text-blue-300 mb-1">Secs</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                value={editSeconds}
+                onChange={(e) => setEditSeconds(e.target.value)}
+                className="w-20 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-2 focus:outline-none focus:border-[#E32636]"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-2 w-full justify-center">
+            <button
+              type="button"
+              onClick={handleSaveCustom}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition text-xs cursor-pointer"
+            >
+              <Check c="w-4 h-4" /> Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditingCustom(false)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 font-bold transition text-xs cursor-pointer"
+            >
+              <X className="w-4 h-4" /> Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={`text-center font-mono font-black tracking-tight my-2 select-none ${
+          isProjectorView ? 'text-[15vw] leading-none' : 'text-8xl sm:text-9xl'
+        } ${getTimerTextColor()}`}>
+          {formatTime(secondsRemaining)}
+        </div>
+      )}
 
       {/* Subtitles & Recovery Editor */}
       <div className="text-center text-sm sm:text-base font-bold text-blue-200 mb-4">
@@ -461,7 +544,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   setEditPostRestInput(postRestSeconds.toString());
                   setIsEditingPostRest(true);
                 }}
-                clatext-xs bg-[#020b1c] px-2 py-0.5 rounded border border-[#E32636]/50 text-white flex items-center gap-1"
+                className="text-xs bg-[#020b1c] px-2 py-0.5 rounded border border-[#E32636]/50 text-white flex items-center gap-1 cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" /> Edit Rest
               </button>
@@ -469,6 +552,8 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           </div>
         ) : mode === 'TABATA' ? (
           <span>Round <span className="text-white text-lg font-black">{currentRound}</span> of {tabataRounds}</span>
+        ) : mode === 'EMOM' ? (
+          <span>Round <span className="text-white text-lg font-black">{currentRound}</span> of {emomRounds}</span>
         ) : mode === 'WARMUP' && warmupPhase === 'STRETCH' ? (
           <span>Stretch <span className="text-white text-lg font-black">{stretchRound}</span> of 6 (20s)</span>
         ) : null}
@@ -493,13 +578,12 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* TABATA Specific 10s Adjusters & Round Stepper */}
+      {/* TABATA Specific Controls (±10s work/rest & ±1 round) */}
       {!isProjectorView && !isActive && mode === 'TABATA' && (
         <div className="space-y-2 max-w-md mx-auto mb-4">
           <div className="grid grid-cols-2 gap-2">
-            {/* Work 10s Adjusters */}
             <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-2 rounded-2xl">
-              <span className="text-xs font-black uppercase text-blue-300 ml-1">Work: {tabataWork}s</span>
+              <span className="text-xs font-black uppcase text-blue-300 ml-1">Work: {tabataWork}s</span>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => adjustTabataWork(-10)} className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white">
                   <Minus className="w-3.5 h-3.5" />
@@ -510,7 +594,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               </div>
             </div>
 
-            {/* Rest 10s Adjusters */}
             <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-2 rounded-2xl">
               <span className="text-xs font-black uppercase text-[#E32636] ml-1">Rest: {tabataRest}s</span>
               <div className="flex items-center gap-1">
@@ -524,7 +607,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             </div>
           </div>
 
-          {/* Rounds Stepper */}
           <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-3 py-2 rounded-2xl">
             <span className="text-xs font-black uppercase text-white">Total Rounds: {tabataRounds}</span>
             <div className="flex items-center gap-2">
@@ -539,27 +621,131 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* 15s Adjusters for Non-Tabata Modes */}
-      {!isProjectorView && !isActive && mode !== 'TABATA' && (
+      {/* AMRAP Specific Controls (±30s & Manual Edit) */}
+      {!isProjectorView && !isActive && !isEditingCustom && mode === 'AMRAP' && (
         <div className="grid grid-cols-3 gap-2 max-w-md mx-auto mb-4">
           <button
             type="button"
-            onClick={() => adjust15s(-15)}
+            onClick={() => adjustAmrapSeconds(-30)}
             className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
           >
             <Minus className="w-4 h-4 stroke-[3]" />
-            <span>15s</span>
+            <span>30s</span>
           </button>
-          <div className="flex items-center justify-center text-xs font-black uppercase text-blue-300/70 border border-[#0047BA]/40 rounded-2xl bg-[#020b1c]/50">
-            ± 15s Step
-          </div>
           <button
             type="button"
-            onClick={() => adjust15s(15)}
+            onClick={() => {
+              setEditMinutes(Math.floor(amrapTotalSeconds / 60).toString());
+              setEditSeconds((amrapTotalSeconds % 60).toString().padStart(2, '0'));
+              setIsEditingCustom(true);
+            }}
+            className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>EDIT</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => adjustAmrapSeconds(30)}
+            className="flex items-center justiy-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>30s</span>
+          </button>
+        </div>
+      )}
+
+      {/* EMOM Specific Controls (±30s Interval & ±1 Round Stepper) */}
+      {!isProjectorView && !isActive && mode === 'EMOM' && (
+        <div className="space-y-2 max-w-md mx-auto mb-4">
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => adjustEmomInterval(-30)}
+              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-2.5 rounded-2xl text-xs font-mono font-black shadow-lg transition"
+            >
+              <Minus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>30s Step</span>
+            </button>
+            <div className="flex items-center justify-center text-xs font-black uppercase text-blue-300 border border-[#0047BA]/40 rounded-2xl bg-[#020b1c]/50">
+              {emomInterval}s / Rd
+            </div>
+            <button
+              type="button"
+              onClick={() => adjustEmomInterval(30)}
+              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-2.5 rounded-2xl text-xs font-mono font-black shadow-lg transition"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>30s Step</span>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-3 py-2 rounded-2xl">
+            <span className="text-xs font-black uppercase text-white">Total Rounds: {emomRounds}</span>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => adjustEmomRounds(-1)} className="px-3 py-1 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-bold text-white">
+                -1 Round
+              </button>
+              <button type="button" onClick={() => adjustEmomRounds(1)} className="px-3 py-1 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-bold text-white">
+                +1 Round
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOR TIME Specific Controls (±30s & Manual Edit) */}
+      {!isProjectorView && !isActive && !isEditingCustom && mode === 'FOR_TIME' && (
+        <div className="grid grid-cols-3 gap-2 max-w-md mx-auto mb-4">
+          <button
+            type="button"
+            onClick={() => adjustForTimeSeconds(-30)}
+            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+          >
+            <Minus className="w-4 h-4 stroke-[3]" />
+            <span>30s</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditMinutes(Math.floor(forTimeTotalSeconds / 60).toString());
+              setEditSeconds((forTimeTotalSeconds % 60).toString().padStart(2, '0'));
+              setIsEditingCustom(true);
+            }}
+            className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>EDIT</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => adjustForTimeSeconds(30)}
             className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>15s</span>
+            <span>30s</span>
+          </button>
+        </div>
+      )}
+
+      {/* WARMUP Specific Controls (±30s Run Adjusters) */}
+      {!isProjectorView && !isActive && mode === 'WARMUP' && (
+        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto mb-4">
+          <button
+            type="button"
+            onClick={() => adjustWarmupRunSeconds(-30)}
+            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+          >
+            <Minus className="w-4 h-4 stroke-[3]" />
+            <span>30s Run</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => adjustWarmupRunSeconds(30)}
+            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>30s Run</span>
           </button>
         </div>
       )}
