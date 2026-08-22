@@ -128,12 +128,13 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
           });
         } else if (mode === 'TABATA') {
           setSecondsRemaining((prev) => {
-            if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+            // No tick countdown during 3-2-1 on Tabata
             if (prev > 1) {
               broadcast({ secondsRemaining: prev - 1, isActive: true });
               return prev - 1;
             }
 
+            // Trigger beep only on interval switch at 0s
             if (isWorkPhase) {
               soundEngine.playRest();
               setIsWorkPhase(false);
@@ -368,7 +369,7 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
                 type="number"
                 min="0"
                 max="59"
-                value={editSeconds}
+              value={editSeconds}
                 onChange={(e) => setEditSeconds(e.target.value)}
                 className="w-20 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-2 focus:outline-none focus:border-[#E32636]"
               />
@@ -441,7 +442,8 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
       {mode === 'TABATA' && (
         <div className="text-center text-base sm:text-lg font-bold text-blue-200 mb-4">
           Round <span className="text-white text-xl font-black">{currentRound}</span> of {tabataRounds}
-        </div      )}
+        </div>
+      )}
 
       {mode === 'AMRAP' && (
         <div className="flex items-center justify-center gap-3 mb-4">
@@ -566,7 +568,7 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
                       broadcast({ secondsRemaining: nextW });
                     }
                   }}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20 cursor-pointer"
                 >
                   <Minus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
@@ -580,7 +582,7 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
                       broadcast({ secondsRemaining: nextW });
                     }
                   }}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
@@ -593,14 +595,14 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
                 <button
                   type="button"
                   onClick={() => setTabataRest(r => Math.max(5, r - 5))}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20 cursor-pointer"
                 >
                   <Minus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setTabataRest(r => r + 5)}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
@@ -613,14 +615,14 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
                 <button
                   type="button"
                   onClick={() => setTabataRounds(r => Math.max(1, r - 1))}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20 cursor-pointer"
                 >
                   <Minus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setTabataRounds(r => r + 1)}
-                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
@@ -635,15 +637,15 @@ export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
             <div className="flex items-center justify-between bg-[#020b1c] px-3 py-2 rounded-xl border border-[#0047BA]">
               <span className="text-xs font-bold text-blue-200">Int: {emomInterval}s</span>
               <div className="flex gap-1.5">
-                <button type="button" onClick={() => { const nextI = Math.max(30, emomInterval - 15); setEmomInterval(nextI); if (!isActive) { setSecondsRemaining(nextI); broadcast({ secondsRemaining: nextI }); } }} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
-                <button type="button" onClick={() => { const nextI = emomInterval + 15; setEmomInterval(nextI); if (!isActive) { setSecondsRemaining(nextI); broadcast({ secondsRemaining: nextI }); } }} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { const nextI = Math.max(30, emomInterval - 15); setEmomInterval(nextI); if (!isActive) { setSecondsRemaining(nextI); broadcast({ secondsRemaining: nextI }); } }} className="p-1 text-blue-300 hover:text-white cursor-pointer"><Minus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { const nextI = emomInterval + 15; setEmomInterval(nextI); if (!isActive) { setSecondsRemaining(nextI); broadcast({ secondsRemaining: nextI }); } }} className="p-1 text-blue-300 hover:text-white cursor-pointer"><Plus className="w-4 h-4" /></button>
               </div>
             </div>
             <div className="flex items-center justify-between bg-[#020b1c] px-3 py-2 rounded-xl border border-[#0047BA]">
               <span className="text-xs font-bold text-blue-200">Rnds: {emomRounds}</span>
               <div className="flex gap-1.5">
-                <button type="button" onClick={() => setEmomRounds(r => Math.max(1, r - 1))} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setEmomRounds(r => r + 1)} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setEmomRounds(r => Math.max(1, r - 1))} className="p-1 text-blue-300 hover:text-white cursor-pointer"><Minus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setEmomRounds(r => r + 1)} className="p-1 text-blue-300 hover:text-white cursor-pointer"><Plus className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
