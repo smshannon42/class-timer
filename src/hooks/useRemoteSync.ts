@@ -26,7 +26,6 @@ export function useRemoteSync(isHost = false) {
     let peer: Peer;
 
     import('peerjs').then(({ default: Peer }) => {
-      // 4-digit readable PIN for host
       const customId = isHost ? Math.floor(1000 + Math.random() * 9000).toString() : undefined;
       peer = customId ? new Peer(customId) : new Peer();
       peerRef.current = peer;
@@ -47,7 +46,7 @@ export function useRemoteSync(isHost = false) {
           setIsConnected(true);
 
           conn.on('data', (data: any) => {
-            setIncomingState(data);
+            setIncomingState({ ...data });
           });
 
           conn.on('close', () => setIsConnected(false));
@@ -85,10 +84,14 @@ export function useRemoteSync(isHost = false) {
   }, []);
 
   const sendState = useCallback((state: Partial<RemoteState>) => {
-    if (connRef.current && isConnected) {
-      connRef.current.send(state);
+    if (connRef.current && connRef.current.open) {
+      try {
+        connRef.current.send(state);
+      } catch (err) {
+        console.error('Error broadcasting state:', err);
+      }
     }
-  }, [isConnected]);
+  }, []);
 
   return {
     peerId,
