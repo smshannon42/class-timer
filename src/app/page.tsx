@@ -45,17 +45,17 @@ export default function Home() {
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none">
       <div className="max-w-5xl mx-auto w-full space-y-4">
         
-        {/* Top Header Bar */}
-        <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-4 py-2.5 rounded-2xl backdrop-blur-md">
+        {/* Top Header Bar with ATP Logo */}
+        <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-3.5 py-2.5 rounded-2xl backdrop-blur-md">
           <MustangWordmark />
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-[#020b1c] border border-[#0047BA]/70 rounded-xl px-2.5 py-1.5">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#E32636]" />
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 bg-[#020b1c] border border-[#0047BA]/70 rounded-xl px-2 py-1.5">
+              <SlidersHorizontal className="w-3 h-3 text-[#E32636]" />
               <select
                 value={manualPeriodId}
                 onChange={(e) => setManualPeriodId(e.target.value)}
-                className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer max-w-[140px] sm:max-w-none"
+                className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer max-w-[120px] sm:max-w-none"
               >
                 <option value="AUTO" className="bg-[#020b1c]">Auto Schedule</option>
                 {BELL_SCHEDULE.map((p) => (
@@ -66,7 +66,6 @@ export default function Home() {
               </select>
             </div>
 
-            {/* Antenna Connect Button */}
             <button
               type="button"
               onClick={() => setIsAntennaModalOpen(true)}
@@ -160,7 +159,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Large Class Hub Status Strip */}
+        {/* Oversized Class Period Header */}
         <div className="bg-[#001f5c]/90 border-2 border-[#0047BA] rounded-3xl px-6 py-5 flex items-center justify-between shadow-2xl">
           <div>
             <div className="text-xs sm:text-sm uppercase font-black tracking-widest text-blue-300 mb-1">
@@ -178,7 +177,7 @@ export default function Home() {
                   <Sparkles className="w-3.5 h-3.5" /> Cleanup
                 </div>
                 <div className={`text-3xl sm:text-5xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
-                  {cleanupSecLeft === 0 ? 'NOW' : cleanupTimeFormatted}
+                  {cleanupSecLeft === 0 ? 'DONE' : cleanupTimeFormatted}
                 </div>
               </div>
             )}
@@ -194,7 +193,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Workout Timer */}
+        {/* Workout Engine */}
         <WorkoutEngine onBroadcast={broadcastState} />
       </div>
 
