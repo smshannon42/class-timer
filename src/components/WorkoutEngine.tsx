@@ -321,7 +321,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // Adjusters
+  // Tabata 10s Adjusters
   const adjustTabataWork = (delta: number) => {
     if (isActive) return;
     setTabataWork((prev) => {
@@ -344,6 +344,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setTabataRounds((prev) => Math.max(1, Math.min(30, prev + delta)));
   };
 
+  // AMRAP 30s Adjusters
   const adjustAmrapSeconds = (delta: number) => {
     if (isActive) return;
     setAmrapTotalSeconds((prev) => {
@@ -354,6 +355,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
+  // EMOM 30s Adjusters
   const adjustEmomInterval = (delta: number) => {
     if (isActive) return;
     setEmomInterval((prev) => {
@@ -369,6 +371,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setEmomRounds((prev) => Math.max(1, Math.min(60, prev + delta)));
   };
 
+  // For Time 30s Adjusters
   const adjustForTimeSeconds = (delta: number) => {
     if (isActive) return;
     setForTimeTotalSeconds((prev) => {
@@ -379,6 +382,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
+  // Warmup 30s Adjusters
   const adjustWarmupRunSeconds = (delta: number) => {
     if (isActive) return;
     setWarmupRunSeconds((prev) => {
@@ -430,17 +434,17 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   return (
-    <div className={`bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-4 sm:p-7 shadow-2xl text-white backdrop-blur-md ${
+    <div className={`bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-5 sm:p-8 shadow-2xl text-white backdrop-blur-md ${
       isProjectorView ? 'p-8 sm:p-12' : ''
     }`}>
       {/* Mode Bar */}
-      <div className="grid grid-cols-5 gap-1 sm:gap-2 bg-[#020b1c] p-1.5 sm:p-2 rounded-2xl mb-5 border border-[#0047BA]">
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-3 bg-[#020b1c] p-2 rounded-2xl mb-6 border border-[#0047BA]">
         {(['WARMUP', 'TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => handleModeChange(m)}
-            className={`py-2 rounded-xl font-black text-[10px] sm:text-xs md:text-sm tracking-wider transition truncate text-center ${
+            className={`py-3 rounded-xl font-black text-xs sm:text-base tracking-wider transition truncate text-center cursor-pointer ${
               mode === m
                 ? 'bg-[#0047BA] text-white shadow-lg shadow-[#0047BA]/60 border border-white/30'
                 : 'text-blue-200 hover:text-white'
@@ -452,65 +456,112 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       </div>
 
       {/* Dynamic Status Indicator */}
-      <div className="text-center mb-2">
+      <div className="text-center mb-3">
         {enginePhase === 'PREP_15' ? (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 animate-pulse">
+          <span className="text-sm sm:text-lg font-black uppercase tracking-widest px-6 py-2 rounded-full bg-amber-500/20 text-amber-300 border-2 border-amber-500/50 animate-pulse">
             ⚠️ PRE-COUNTDOWN: 15s PREP
           </span>
         ) : enginePhase === 'POST_REST_90' ? (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border border-[#E32636]/50 animate-pulse">
+          <span className="text-sm sm:text-lg font-black uppercase tracking-widest px-6 py-2 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50 animate-pulse">
             🛑 {postRestSeconds}s POST-WORKOUT REST
           </span>
         ) : mode === 'TABATA' ? (
-          <span className={`text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full border ${
+          <span className={`text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 ${
             isWorkPhase ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50'
           }`}>
             {isWorkPhase ? `WORK (${tabataWork}s)` : `REST (${tabataRest}s)`}
           </span>
         ) : mode === 'WARMUP' ? (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full border bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
+          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
             {warmupPhase === 'RUN' ? `RUN PHASE (${formatTime(warmupRunSeconds)})` : `DYNAMIC STRETCH ${stretchRound} OF 6`}
           </span>
         ) : mode === 'EMOM' ? (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
+          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA]/40 text-white border-2 border-[#0047BA]">
             ROUND {currentRound} OF {emomRounds} ({emomInterval}s)
           </span>
         ) : mode === 'AMRAP' ? (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full bg-[#E32636]/20 text-[#border border-[#E32636]/50">
+  <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50">
             AMRAP: {formatTime(amrapTotalSeconds)}
           </span>
         ) : (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
+          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA]/40 text-white border-2 border-[#0047BA]">
             FOR TIME: {formatTime(forTimeTotalSeconds)}
           </span>
         )}
       </div>
 
-      {/* Main Countdown Display */}
-      <div className={`text-center font-mono font-black tracking-tight my-2 select-none ${
-        isProjectorView ? 'text-[15vw] leading-none' : 'text-8xl sm:text-9xl'
-      } ${getTimerTextColor()}`}>
-        {formatTime(secondsRemaining)}
-      </div>
+      {/* Editing Custom Time Modal */}
+      {isEditingCustom ? (
+        <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#020b1c] p-6 rounded-3xl border-2 border-[#0047BA] shadow-2xl max-w-md mx-auto">
+          <span className="text-sm uppercase font-black tracking-widest text-[#E32636]">Set Custom Duration</span>
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-col items-center">
+              <span className="text-xs uppercase font-bold text-blue-300 mb-1">Mins</span>
+              <input
+                type="number"
+                min="0"
+                max="99"
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(e.target.value)}
+                className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-5xl rounded-2xl p-2.5 focus:outline-none focus:border-[#E32636]"
+              />
+            </div>
+            <span className="text-5xl font-mono font-black text-[#0047BA] mt-4">:</span>
+            <div className="flex flex-col items-center">
+              <span className="text-xs uppercase font-bold text-blue-300 mb-1">Secs</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                value={editSeconds}
+                onChange={(e) => setEditSeconds(e.target.value)}
+                className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-5xl rounded-2xl p-2.5 focus:outline-none focus:border-[#E32636]"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mt-2 w-full justify-center">
+            <button
+              type="button"
+              onClick={handleSaveCustom}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-white font-black transition text-sm cursor-pointer shadow-lg"
+            >
+              <Check className="w-5 h-5 stroke-[3]" /> Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditingCustom(false)}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-300 font-black transition text-sm cursor-pointer shadow-lg"
+            >
+              <X className="w-5 h-5 stroke-[3]" /> Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={`text-center font-mono font-black tracking-tight my-3 select-none ${
+          isProjectorView ? 'text-[16vw] leading-none' : 'text-8xl sm:text-9xl'
+        } ${getTimerTextColor()}`}>
+          {formatTime(secondsRemaining)}
+        </div>
+      )}
 
       {/* Subtitles & Skip Button */}
-      <div className="text-center text-sm sm:text-base font-bold text-blue-200 mb-4">
+      <div className="text-center text-base sm:text-lg font-bold text-blue-200 mb-6">
         {enginePhase === 'PREP_15' ? (
           <div className="flex items-center justify-center gap-3">
-            <span className="text-amber-300 font-bold">Get In Position</span>
+            <span className="text-amber-300 font-black text-xl">Get In Position</span>
             {!isProjectorView && (
               <button
                 type="button"
                 onClick={skipPrepCountdown}
-                className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
+                className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-sm rounded-2xl shadow-xl transition active:scale-95 cursor-pointer"
               >
-                <FastForward className="w-3.5 h-3.5 fill-current" /> SKIP PREP
+                <FastForward className="w-5 h-5 fill-current" /> SKIP PREP
               </button>
             )}
           </div>
         ) : enginePhase === 'POST_REST_90' ? (
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-[#E32636] font-bold">Heart Rate Recovery</span>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-[#E32636] font-black text-xl">Heart Rate Recovery</span>
             {!isProjectorView && (
               <button
                 type="button"
@@ -518,76 +569,79 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   setEditPostRestInput(postRestSeconds.toString());
                   setIsEditingPostRest(true);
                 }}
-                className="text-xs bg-[#020b1c] px-2 py-0.5 rounded border border-[#E32636]/50 text-white flex items-center gap-1 cursor-pointer"
+                className="text-sm bg-[#020b1c] px-3.5 py-1.5 rounded-xl border-2 border-[#E32636]/60 text-white font-black flex items-center gap-1.5 cursor-pointer shadow-lg"
               >
-                <Edit3 className="w-3.5 h-3.5" /> Edit Rest
+                <Edit3 className="w-4 h-4" /> Edit Rest
               </button>
             )}
           </div>
         ) : mode === 'TABATA' ? (
-          <span>Round <span className="text-white text-lg font-black">{currentRound}</span> of {tabataRounds}</span>
+          <span>Round <span className="text-white text-2xl font-black">{currentRound}</span> of {tabataRounds}</span>
         ) : mode === 'EMOM' ? (
-          <span>Round <span className="text-white text-lg font-black">{currentRound}</span> of {emomRounds}</span>
+          <span>Round <span className="text-white text-2xl font-black">{currentRound}</span> of {emomRounds}</span>
         ) : mode === 'WARMUP' && warmupPhase === 'STRETCH' ? (
-          <span>Stretch <span className="text-white text-lg font-black">{stretchRound}</span> of 6 (20s)</span>
+          <span>Stretch <span className="text-white text-2xl font-black">{stretchRound}</span> of 6 (20s)</span>
         ) : null}
       </div>
 
       {/* Post Rest Edit Modal */}
       {isEditingPostRest && (
-        <div className="flex items-center justify-center gap-2 bg-[#020b1c] p-3 rounded-2xl border border-[#0047BA] max-w-xs mx-auto mb-4">
+        <div className="flex items-center justify-center gap-3 bg-[#020b1c] p-4 rounded-3xl border-2 border-[#0047BA] max-w-sm mx-auto mb-6 shadow-2xl">
           <input
             type="number"
             value={editPostRestInput}
             onChange={(e) => setEditPostRestInput(e.target.value)}
-            className="w-20 text-center bg-[#001f5c] border border-[#0047BA] text-white font-mono font-black text-xl rounded-xl p-1"
+            className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-3xl rounded-2xl p-2"
           />
-          <span className="text-xs text-blue-300 font-bold">Seconds</span>
-          <button type="button" onClick={handleSavePostRest} className="p-1.5 bg-emerald-600 rounded-lg text-white">
-            <Check className="w-4 h-4" />
+          <span className="text-sm text-blue-300 font-bold">Seconds</span>
+          <button type="button" onClick={handleSavePostRest} className="p-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white">
+            <Check className="w-6 h-6 stroke-[3]" />
           </button>
-          <button type="button" onClick={() => setIsEditingPostRest(false)} className="p-1.5 bg-slate-800 rounded-lg text-slate-300">
-            <X className="w-4 h-4" />
+          <button type="button" onClick={() => setIsEditingPostRest(false)} className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300">
+            <X className="w-6 h-6 stroke-[3]" />
           </button>
         </div>
       )}
 
-      {/* TABATA Specific Controls */}
+      {/* DOUBLE-SIZED TABATA CONTROLS */}
       {!isProjectorView && !isActive && mode === 'TABATA' && (
-        <div className="space-y-2 max-w-md mx-auto mb-4">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-2 rounded-2xl">
-              <span className="text-xs font-black uppercase text-blue-300 ml-1">Work: {tabataWork}s</span>
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => adjustTabataWork(-10)} className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white">
-                  <Minus className="w-3.5 h-3.5" />
+        <div className="space-y-3 max-w-lg mx-auto mb-6">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Work 10s Adjuster */}
+            <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3.5 rounded-3xl shadow-lg">
+              <span className="text-sm font-black uppercase text-blue-300 ml-1">Work: {tabataWork}s</span>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => adjustTabataWork(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
+                  <Minus className="w-5 h-5 stroke-[3]" />
                 </button>
-                <button type="button" onClick={() => adjustTabataWork(10)} className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white">
-                  <Plus className="w-3.5 h-3.5" />
+                <button type="button" onClick={() => adjustTabataWork(10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
+                  <Plus className="w-5 h-5 stroke-[3]" />
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-2 rounded-2xl">
-              <span className="text-xs font-black uppercase text-[#E32636] ml-1">Rest: {tabataRest}s</span>
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => adjustTabataRest(-10)} className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white">
-                  <Minus className="w-3.5 h-3.5" />
+            {/* Rest 10s Adjuster */}
+            <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3.5 rounded-3xl shadow-lg">
+              <span className="text-sm font-black uppercase text-[#E32636] ml-1">Rest: {tabataRest}s</span>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => adjustTabataRest(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
+                  <Minus className="w-5 h-5 stroke-[3]" />
                 </button>
-                <button type="button" onClick={() => adjustTabataRest(10)} className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white">
-                  <Plus className="w-3.5 h-3.5" />
+                <button type="button" onClick={() => adjustTabataRest(10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
+                  <Plus className="w-5 h-5 stroke-[3]" />
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-3 py-2 rounded-2xl">
-            <span className="text-xs font-black uppercase text-white">Total Rounds: {tabataRounds}</span>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => adjustTabataRounds(-1)} className="px-3 py-1 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-bold text-white">
+          {/* Rounds Stepper */}
+          <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-5 py-3.5 rounded-3xl shadow-lg">
+            <span className="text-base font-black uppercase text-white">Rounds: {tabataRounds}</span>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => adjustTabataRounds(-1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
                 -1 Round
               </button>
-              <button type="button" onClick={() => adjustTabataRounds(1)} className="px-3 py-1 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-bold text-white">
+              <button type="button" onClick={() => adjustTabataRounds(1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
                 +1 Round
               </button>
             </div>
@@ -595,15 +649,15 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* AMRAP Specific Controls */}
+      {/* DOUBLE-SIZED AMRAP CONTROLS (±30s & Edit) */}
       {!isProjectorView && !isActive && !isEditingCustom && mode === 'AMRAP' && (
-        <div className="grid grid-cols-3 gap-2 max-w-md mx-auto mb-4">
+        <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto mb-6">
           <button
             type="button"
             onClick={() => adjustAmrapSeconds(-30)}
-            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Minus className="w-4 h-4 stroke-[3]" />
+            <Minus className="w-6 h-6 stroke-[3]" />
             <span>30s</span>
           </button>
           <button
@@ -613,54 +667,54 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               setEditSeconds((amrapTotalSeconds % 60).toString().padStart(2, '0'));
               setIsEditingCustom(true);
             }}
-            className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
+            className="flex items-center justify-center gap-2 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-4 rounded-3xl text-sm font-black shadow-xl transition cursor-pointer"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-5 h-5 stroke-[2.5]" />
             <span>EDIT</span>
           </button>
           <button
             type="button"
             onClick={() => adjustAmrapSeconds(30)}
-            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+            classame="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-6 h-6 stroke-[3]" />
             <span>30s</span>
           </button>
         </div>
       )}
 
-      {/* EMOM Specific Controls */}
+      {/* DOUBLE-SIZED EMOM CONTROLS */}
       {!isProjectorView && !isActive && mode === 'EMOM' && (
-        <div className="space-y-2 max-w-md mx-auto mb-4">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-3 max-w-lg mx-auto mb-6">
+          <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
               onClick={() => adjustEmomInterval(-30)}
-              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-2.5 rounded-2xl text-xs font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-3xl text-sm font-mono font-black shadow-lg transition cursor-pointer"
             >
-              <Minus className="w-3.5 h-3.5 stroke-[3]" />
-              <span>30s Step</span>
+              <Minus className="w-5 h-5 stroke-[3]" />
+              <span>30s</span>
             </button>
-            <div className="flex items-center justify-center text-xs font-black uppercase text-blue-300 border border-[#0047BA]/40 rounded-2xl bg-[#020b1c]/50">
+            <div className="flex items-center justify-center text-sm font-black uppercase text-blue-300 border-2 border-[#0047BA]/50 rounded-3xl bg-[#020b1c]/50">
               {emomInterval}s / Rd
             </div>
             <button
               type="button"
               onClick={() => adjustEmomInterval(30)}
-              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-2.5 rounded-2xl text-xs font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-3xl text-sm font-mono font-black shadow-lg transition cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              <span>30s Step</span>
+              <Plus className="w-5 h-5 stroke-[3]" />
+              <span>30s</span>
             </button>
           </div>
 
-          <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-3 py-2 rounded-2xl">
-            <span className="text-xs font-black uppercase text-white">Total Rounds: {emomRounds}</span>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => adjustEmomRounds(-1)} className="px-3 py-1 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-bold text-white">
+          <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-5 py-3.5 rounded-3xl shadow-lg">
+            <span className="text-base font-black uppercase text-white">Rounds: {emomRounds}</span>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => adjustEmomRounds(-1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
                 -1 Round
               </button>
-              <button type="button" onClick={() => adjustEmomRounds(1)} className="px-3 py-1 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-bold text-white">
+              <button type="button" onClick={() => adjustEmomRounds(1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
                 +1 Round
               </button>
             </div>
@@ -668,15 +722,15 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* FOR TIME Specific Controls */}
+      {/* DOUBLE-SIZED FOR TIME CONTROLS */}
       {!isProjectorView && !isActive && !isEditingCustom && mode === 'FOR_TIME' && (
-        <div className="grid grid-cols-3 gap-2 max-w-md mx-auto mb-4">
+        <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto mb-6">
           <button
             type="button"
             onClick={() => adjustForTimeSeconds(-30)}
-            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Minus className="w-4 h-4 stroke-[3]" />
+            <Minus className="w-6 h-6 stroke-[3]" />
             <span>30s</span>
           </button>
           <button
@@ -686,60 +740,60 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               setEditSeconds((forTimeTotalSeconds % 60).toString().padStart(2, '0'));
               setIsEditingCustom(true);
             }}
-            className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
+            className="flex items-center justify-center gap-2 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-4 rounded-3xl text-sm font-black shadow-xl transition cursor-pointer"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-5 h-5 stroke-[2.5]" />
             <span>EDIT</span>
           </button>
           <button
             type="button"
             onClick={() => adjustForTimeSeconds(30)}
-            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-6 h-6 stroke-[3]" />
             <span>30s</span>
           </button>
         </div>
       )}
 
-      {/* WARMUP Specific Controls */}
+      {/* DOUBLE-SIZED WARMUP RUN CONTROLS */}
       {!isProjectorView && !isActive && mode === 'WARMUP' && (
-        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto mb-4">
+        <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto mb-6">
           <button
             type="button"
             onClick={() => adjustWarmupRunSeconds(-30)}
-            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Minus className="w-4 h-4 stroke-[3]" />
+            <Minus className="w-6 h-6 stroke-[3]" />
             <span>30s Run</span>
           </button>
           <button
             type="button"
             onClick={() => adjustWarmupRunSeconds(30)}
-            className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-sm font-mono font-black shadow-lg transition"
+            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-6 h-6 stroke-[3]" />
             <span>30s Run</span>
           </button>
         </div>
       )}
 
-      {/* Action Buttons */}
+      {/* DOUBLE-SIZED ACTION BUTTONS */}
       {!isProjectorView && (
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-4">
           <button
             type="button"
             onClick={handleToggleStartPause}
-            className={`flex items-center justify-center gap-2 flex-1 max-w-xs py-3.5 rounded-2xl font-black text-lg tracking-wider transition shadow-2xl cursor-pointer ${
+            className={`flex items-center justify-center gap-3 flex-1 max-w-md py-4 sm:py-5 rounded-3xl font-black text-xl sm:text-2xl tracking-wider transition shadow-2xl cursor-pointer active:scale-95 ${
               isActive
                 ? 'bg-[#E32636] hover:bg-[#c91e2c] text-white shadow-lg shadow-[#E32636]/40'
                 : 'bg-[#0047BA] hover:bg-[#003da5] text-white shadow-lg shadow-[#0047BA]/50 border border-white/20'
             }`}
           >
-            {isActive ? <><Pause className="w-5 h-5 fill-current" /> PAUSE</> : <><Play className="w-5 h-5 fill-current" /> START</>}
+            {isActive ? <><Pause className="w-6 h-6 fill-current" /> PAUSE</> : <><Play className="w-6 h-6 fill-current" /> START</>}
           </button>
-          <button type="button" onClick={resetTimer} className="p-3.5 bg-[#020b1c] hover:bg-[#001f5c] text-blue-200 rounded-2xl border border-[#0047BA] transition cursor-pointer">
-            <RotateCcw className="w-5 h-5" />
+          <button type="button" onClick={resetTimer} className="p-4 sm:p-5 bg-[#020b1c] hover:bg-[#001f5c] text-blue-200 rounded-3xl border-2 border-[#0047BA] transition cursor-pointer active:scale-95">
+            <RotateCcw className="w-6 h-6 stroke-[2.5]" />
           </button>
         </div>
       )}
