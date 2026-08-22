@@ -2,10 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
+import { RemoteState } from '@/hooks/useRemoteSync';
+
+interface WorkoutEngineProps {
+  onStateChange?: (state: Partial<RemoteState>) => void;
+}
 
 type WorkoutMode = 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
 
-export default function WorkoutEngine() {
+export default function WorkoutEngine({ onStateChange }: WorkoutEngineProps) {
   const [mode, setMode] = useState<WorkoutMode>('WARMUP');
   
   // Warmup state
@@ -29,7 +34,7 @@ export default function WorkoutEngine() {
   const [emomInterval, setEmomInterval] = useState(60);
   const [emomRounds, setEmomRounds] = useState(10);
 
-  // For Time state (defaults 5:00)
+  // For Time state
   const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(300);
   const [isEditingForTime, setIsEditingForTime] = useState(false);
   const [editMinutes, setEditMinutes] = useState('5');
@@ -40,6 +45,22 @@ export default function WorkoutEngine() {
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
   const [secondsRemaining, setSecondsRemaining] = useState(180);
+
+  // Sync state broadcast helper
+  const broadcast = (override: Partial<RemoteState> = {}) => {
+    if (onStateChange) {
+      onStateChange({
+        mode,
+        isActive,
+        secondsRemaining,
+        currentRound,
+        isWorkPhase,
+        warmupPhase,
+        stretchRound,
+        ...override,
+      });
+    }
+  };
 
   const handleModeChange = (newMode: WorkoutMode) => {
     setMode(newMode);
@@ -52,11 +73,23 @@ export default function WorkoutEngine() {
     setWarmupPhase('RUN');
     setStretchRound(1);
 
-    if (newMode === 'WARMUP') setSecondsRemaining(warmupRunSeconds);
-    if (newMode === 'TABATA') setSecondsRemaining(tabataWork);
-    if (newMode === 'AMRAP') setSecondsRemaining(amrapMinutes * 60);
-    if (newMode === 'EMOM') setSecondsRemaining(emomInterval);
-    if (newMode === 'FOR_TIME') setSecondsRemaining(forTimeTotalSeconds);
+    let nextSec = 180;
+    if (newMode === 'WARMUP') nextSec = warmupRunSeconds;
+    if (newMode === 'TABATA') nextSec = tabataWork;
+    if (newMode === 'AMRAP') nextSec = amrapMinutes * 60;
+    if (newMode === 'EMOM') nextSec = emomInterval;
+    if (newMode === 'FOR_TIME') nextSec = forTimeTotalSeconds;
+
+    setSecondsRemaining(nextSec);
+    broadcast({
+      mode: newMode,
+      isActive: false,
+      secondsRemaining: nextSec,
+      currentRound: 1,
+      isWorkPhase: true,
+      warmupPhase: 'RUN',
+      stretchRound: 1,
+    });
   };
 
   useEffect(() => {
@@ -67,23 +100,28 @@ export default function WorkoutEngine() {
         if (mode === 'WARMUP') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
-            if (prev > 1) return prev - 1;
+            if (prev > 1) {
+              broadcast({ secondsRemaining: prev - 1, isActive: true });
+              return prev - 1;
+            }
 
             if (warmupPhase === 'RUN') {
-              // Finish Run Phase: Play chime, load 20s stretch interval, and PAUSE
-              soundEngine.playCleanupChime();
+              soundEngine.playWorkGo();
               setWarmupPhase('STRETCH');
               setStretchRound(1);
-              setIsActive(false);
+              broadcast({ warmupPhase: 'STRETCH', stretchRound: 1, secondsRemaining: 20, isActive: true });
               return 20;
             } else {
               if (stretchRound < totalStretchRounds) {
                 soundEngine.playWorkGo();
-                setStretchRound((r) => r + 1);
+                const nextR = stretchRound + 1;
+                setStretchRound(nextR);
+                broadcast({ stretchRound: nextR, secondsRemaining: 20, isActive: true });
                 return 20;
               } else {
                 soundEngine.playCleanupChime();
                 setIsActive(false);
+                broadcast({ secondsRemaining: 0, isActive: false });
                 return 0;
               }
             }
@@ -91,20 +129,27 @@ export default function WorkoutEngine() {
         } else if (mode === 'TABATA') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
-            if (prev > 1) return prev - 1;
+            if (prev > 1) {
+              broadcast({ secondsRemaining: prev - 1, isActive: true });
+              return prev - 1;
+            }
 
             if (isWorkPhase) {
               soundEngine.playRest();
               setIsWorkPhase(false);
+              broadcast({ isWorkPhase: false, secondsRemaining: tabataRest, isActive: true });
               return tabataRest;
             } else {
               if (currentRound < tabataRounds) {
                 soundEngine.playWorkGo();
-                setCurrentRound((r) => r + 1);
+                const nextR = currentRound + 1;
+                setCurrentRound(nextR);
                 setIsWorkPhase(true);
+                broadcast({ isWorkPhase: true, currentRound: nextR, secondsRemaining: tabataWork, isActive: true });
                 return tabataWork;
               } else {
                 setIsActive(false);
+                broadcast({ secondsRemaining: 0, isActive: false });
                 return 0;
               }
             }
@@ -112,22 +157,32 @@ export default function WorkoutEngine() {
         } else if (mode === 'EMOM') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
-            if (prev > 1) return prev - 1;
+            if (prev > 1) {
+              broadcast({ secondsRemaining: prev - 1, isActive: true });
+              return prev - 1;
+            }
             if (currentRound < emomRounds) {
               soundEngine.playWorkGo();
-              setCurrentRound((r) => r + 1);
+              const nextR = currentRound + 1;
+              setCurrentRound(nextR);
+              broadcast({ currentRound: nextR, secondsRemaining: emomInterval, isActive: true });
               return emomInterval;
             } else {
               setIsActive(false);
+              broadcast({ secondsRemaining: 0, isActive: false });
               return 0;
             }
           });
         } else if (mode === 'AMRAP' || mode === 'FOR_TIME') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
-            if (prev > 1) return prev - 1;
+            if (prev > 1) {
+              broadcast({ secondsRemaining: prev - 1, isActive: true });
+              return prev - 1;
+            }
             soundEngine.playRest();
             setIsActive(false);
+            broadcast({ secondsRemaining: 0, isActive: false });
             return 0;
           });
         }
@@ -147,11 +202,29 @@ export default function WorkoutEngine() {
     setWarmupPhase('RUN');
     setStretchRound(1);
 
-    if (mode === 'WARMUP') setSecondsRemaining(warmupRunSeconds);
-    if (mode === 'TABATA') setSecondsRemaining(tabataWork);
-    if (mode === 'AMRAP') setSecondsRemaining(amrapMinutes * 60);
-    if (mode === 'EMOM') setSecondsRemaining(emomInterval);
-    if (mode === 'FOR_TIME') setSecondsRemaining(forTimeTotalSeconds);
+    let sec = 180;
+    if (mode === 'WARMUP') sec = warmupRunSeconds;
+    if (mode === 'TABATA') sec = tabataWork;
+    if (mode === 'AMRAP') sec = amrapMinutes * 60;
+    if (mode === 'EMOM') sec = emomInterval;
+    if (mode === 'FOR_TIME') sec = forTimeTotalSeconds;
+
+    setSecondsRemaining(sec);
+    broadcast({
+      isActive: false,
+      secondsRemaining: sec,
+      currentRound: 1,
+      isWorkPhase: true,
+      warmupPhase: 'RUN',
+      stretchRound: 1,
+    });
+  };
+
+  const handleToggleActive = () => {
+    const nextActive = !isActive;
+    soundEngine.playWorkGo();
+    setIsActive(nextActive);
+    broadcast({ isActive: nextActive });
   };
 
   const handleAdjustWarmupRunSeconds = (delta: number) => {
@@ -159,6 +232,7 @@ export default function WorkoutEngine() {
       const nextVal = Math.max(30, prev + delta);
       if (!isActive && warmupPhase === 'RUN') {
         setSecondsRemaining(nextVal);
+        broadcast({ secondsRemaining: nextVal });
       }
       return nextVal;
     });
@@ -167,7 +241,10 @@ export default function WorkoutEngine() {
   const handleAdjustForTimeSeconds = (delta: number) => {
     setForTimeTotalSeconds((prev) => {
       const nextVal = Math.max(10, prev + delta);
-      if (!isActive) setSecondsRemaining(nextVal);
+      if (!isActive) {
+        setSecondsRemaining(nextVal);
+        broadcast({ secondsRemaining: nextVal });
+      }
       return nextVal;
     });
   };
@@ -178,7 +255,10 @@ export default function WorkoutEngine() {
     const total = mins * 60 + secs;
     if (total > 0) {
       setForTimeTotalSeconds(total);
-      if (!isActive) setSecondsRemaining(total);
+      if (!isActive) {
+        setSecondsRemaining(total);
+        broadcast({ secondsRemaining: total });
+      }
     }
     setIsEditingForTime(false);
   };
@@ -186,7 +266,10 @@ export default function WorkoutEngine() {
   const handleAdjustAmrapMinutes = (delta: number) => {
     setAmrapMinutes((prev) => {
       const nextVal = Math.max(1, prev + delta);
-      if (!isActive) setSecondsRemaining(nextVal * 60);
+      if (!isActive) {
+        setSecondsRemaining(nextVal * 60);
+        broadcast({ secondsRemaining: nextVal * 60 });
+      }
       return nextVal;
     });
   };
@@ -194,7 +277,10 @@ export default function WorkoutEngine() {
   const handleSaveAmrapCustom = () => {
     const mins = Math.max(1, parseInt(editAmrapInput) || 5);
     setAmrapMinutes(mins);
-    if (!isActive) setSecondsRemaining(mins * 60);
+    if (!isActive) {
+      setSecondsRemaining(mins * 60);
+      broadcast({ secondsRemaining: mins * 60 });
+    }
     setIsEditingAmrap(false);
   };
 
@@ -211,6 +297,7 @@ export default function WorkoutEngine() {
         {(['WARMUP', 'TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
           <button
             key={m}
+            type="button"
             onClick={() => handleModeChange(m)}
             className={`py-2 rounded-xl font-black text-[10px] sm:text-xs md:text-sm tracking-wider transition truncate text-center ${
               mode === m
@@ -252,7 +339,7 @@ export default function WorkoutEngine() {
           </span>
         )}
         {mode === 'FOR_TIME' && (
-          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4y-1 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
+          <span className="text-xs sm:text-sm font-black uppercase tracking-widest px-4 py-1 rounded-full bg-[#0047BA]/40 text-white border border-[#0047BA]">
             FOR TIME COUNTDOWN
           </span>
         )}
@@ -289,12 +376,14 @@ export default function WorkoutEngine() {
           </div>
           <div className="flex items-center gap-3 mt-2 w-full justify-center">
             <button
+              type="button"
               onClick={handleSaveCustomTime}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition text-xs"
             >
               <Check className="w-4 h-4" /> Save
             </button>
             <button
+              type="button"
               onClick={() => setIsEditingForTime(false)}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 font-bold transition text-xs"
             >
@@ -315,12 +404,14 @@ export default function WorkoutEngine() {
           />
           <div className="flex items-center gap-3 w-full justify-center mt-2">
             <button
+              type="button"
               onClick={handleSaveAmrapCustom}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white font-bold transition text-xs"
             >
               <Check className="w-4 h-4" /> Save
             </button>
             <button
+              type="button"
               onClick={() => setIsEditingAmrap(false)}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 font-bold transition text-xs"
             >
@@ -350,112 +441,49 @@ export default function WorkoutEngine() {
       {mode === 'TABATA' && (
         <div className="text-center text-base sm:text-lg font-bold text-blue-200 mb-4">
           Round <span className="text-white text-xl font-black">{currentRound}</span> of {tabataRounds}
-        </div>
-      )}
+        </div      )}
 
       {mode === 'AMRAP' && (
         <div className="flex items-center justify-center gap-3 mb-4">
           <span className="text-blue-200 font-bold text-xs sm:text-sm">Completed Rounds:</span>
           <div className="flex items-center gap-2 bg-[#020b1c] px-3 py-1 rounded-xl border border-[#0047BA]">
-            <button onClick={() => setAmrapCompletedRounds((r) => Math.max(0, r - 1))} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setAmrapCompletedRounds((r) => Math.max(0, r - 1))} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
             <span className="text-xl font-black text-white px-2">{amrapCompletedRounds}</span>
-            <button onClick={() => setAmrapCompletedRounds((r) => r + 1)} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setAmrapCompletedRounds((r) => r + 1)} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
           </div>
         </div>
       )}
 
-      {/* Mode Specific Controls */}
+      {/* Single-Row Controls */}
       <div className="my-4">
-        {/* ENLARGED TABATA BUTTONS */}
-        {mode === 'TABATA' && (
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 max-w-xl mx-auto">
-            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
-              <span className="text-xs sm:text-sm uppercase font-black text-blue-300 tracking-wider">
-                Work <span className="text-white font-mono text-base sm:text-lg">{tabataWork}s</span>
-              </span>
-              <div className="grid grid-cols-2 gap-2 w-full mt-2">
-                <button
-                  onClick={() => { setTabataWork(w => Math.max(5, w - 5)); if (!isActive && isWorkPhase) setSecondsRemaining(w => Math.max(5, w - 5)); }}
-                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
-                >
-                  <Minus className="w-5 h-5 stroke-[3]" />
-                </button>
-                <button
-                  onClick={() => { setTabataWork(w => w + 5); if (!isActive && isWorkPhase) setSecondsRemaining(w => w + 5); }}
-                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
-                >
-                  <Plus className="w-5 h-5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
-              <span className="text-xs sm:text-sm uppercase font-black text-[#E32636] tracking-wider">
-                Rest <span className="text-white font-mono text-base sm:text-lg">{tabataRest}s</span>
-              </span>
-              <div className="grid grid-cols-2 gap-2 w-full mt-2">
-                <button
-                  onClick={() => setTabataRest(r => Math.max(5, r - 5))}
-                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
-                >
-                  <Minus className="w-5 h-5 stroke-[3]" />
-                </button>
-                <button
-                  onClick={() => setTabataRest(r => r + 5)}
-                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
-                >
-                  <Plus className="w-5 h-5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-3 flex flex-col items-center justify-between shadow-lg">
-              <span className="text-xs sm:text-sm uppercase font-black text-blue-300 tracking-wider">
-                Rounds <span className="text-white font-mono text-base sm:text-lg">{tabataRounds}</span>
-              </span>
-              <div className="grid grid-cols-2 gap-2 w-full mt-2">
-                <button
-                  onClick={() => setTabataRounds(r => Math.max(1, r - 1))}
-                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
-                >
-                  <Minus className="w-5 h-5 stroke-[3]" />
-                </button>
-                <button
-                  onClick={() => setTabataRounds(r => r + 1)}
-                  className="flex items-center justify-center py-3 bg-[#001f5c] hover:bg-[#0047BA] active:scale-95 text-white rounded-xl border border-white/20 shadow-md"
-                >
-                  <Plus className="w-5 h-5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* AMRAP Single-Row Bar */}
         {mode === 'AMRAP' && !isEditingAmrap && (
           <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
             <button
+              type="button"
               onClick={() => handleAdjustAmrapMinutes(-1)}
-              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition cursor-pointer"
             >
               <Minus className="w-4 h-4 stroke-[3]" />
               <span>1m</span>
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 setEditAmrapInput(amrapMinutes.toString());
                 setIsEditingAmrap(true);
               }}
-              className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>EDIT</span>
             </button>
 
             <button
+              type="button"
               onClick={() => handleAdjustAmrapMinutes(1)}
-              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>1m</span>
@@ -467,28 +495,31 @@ export default function WorkoutEngine() {
         {mode === 'FOR_TIME' && !isEditingForTime && (
           <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
             <button
+              type="button"
               onClick={() => handleAdjustForTimeSeconds(-30)}
-              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition cursor-pointer"
             >
               <Minus className="w-4 h-4 stroke-[3]" />
               <span>30s</span>
             </button>
 
             <button
+              type="button"
               onClick={() => {
                 setEditMinutes(Math.floor(forTimeTotalSeconds / 60).toString());
                 setEditSeconds((forTimeTotalSeconds % 60).toString().padStart(2, '0'));
                 setIsEditingForTime(true);
               }}
-              className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-3 rounded-2xl text-xs font-black shadow-lg transition cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>EDIT</span>
             </button>
 
             <button
+              type="button"
               onClick={() => handleAdjustForTimeSeconds(30)}
-              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>30s</span>
@@ -500,20 +531,101 @@ export default function WorkoutEngine() {
         {mode === 'WARMUP' && (
           <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
             <button
+              type="button"
               onClick={() => handleAdjustWarmupRunSeconds(-30)}
-              className="flex items-center justify-center gap-1.5 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1.5 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition cursor-pointer"
             >
               <Minus className="w-4 h-4 stroke-[3]" />
               <span>30s Run</span>
             </button>
 
             <button
+              type="button"
               onClick={() => handleAdjustWarmupRunSeconds(30)}
-              className="flex items-center justify-center gap-1.5 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition"
+              className="flex items-center justify-center gap-1.5 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3 rounded-2xl text-base font-mono font-black shadow-lg transition cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               <span>30s Run</span>
             </button>
+          </div>
+        )}
+
+        {/* TABATA Controls */}
+        {mode === 'TABATA' && (
+          <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
+            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-2 flex flex-col items-center">
+              <span className="text-[10px] uppercase font-black text-blue-300">Work {tabataWork}s</span>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextW = Math.max(5, tabataWork - 5);
+                    setTabataWork(nextW);
+                    if (!isActive && isWorkPhase) {
+                      setSecondsRemaining(nextW);
+                      broadcast({ secondsRemaining: nextW });
+                    }
+                  }}
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                >
+                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextW = tabataWork + 5;
+                    setTabataWork(nextW);
+                    if (!isActive && isWorkPhase) {
+                      setSecondsRemaining(nextW);
+                      broadcast({ secondsRemaining: nextW });
+                    }
+                  }}
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-2 flex flex-col items-center">
+              <span className="text-[10px] uppercase font-black text-[#E32636]">Rest {tabataRest}s</span>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setTabataRest(r => Math.max(5, r - 5))}
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                >
+                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTabataRest(r => r + 5)}
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-[#020b1c] border-2 border-[#0047BA] rounded-2xl p-2 flex flex-col items-center">
+              <span className="text-[10px] uppercase font-black text-blue-300">Rounds {tabataRounds}</span>
+              <div className="flex items-center gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setTabataRounds(r => Math.max(1, r - 1))}
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                >
+                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTabataRounds(r => r + 1)}
+                  className="p-1.5 bg-[#001f5c] hover:bg-[#0047BA] text-white rounded-lg border border-white/20"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -523,15 +635,15 @@ export default function WorkoutEngine() {
             <div className="flex items-center justify-between bg-[#020b1c] px-3 py-2 rounded-xl border border-[#0047BA]">
               <span className="text-xs font-bold text-blue-200">Int: {emomInterval}s</span>
               <div className="flex gap-1.5">
-                <button onClick={() => { setEmomInterval(i => Math.max(30, i - 15)); if (!isActive) setSecondsRemaining(i => Math.max(30, i - 15)); }} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
-                <button onClick={() => { setEmomInterval(i => i + 15); if (!isActive) setSecondsRemaining(i => i + 15); }} className="hover:text-white"><Plus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { const nextI = Math.max(30, emomInterval - 15); setEmomInterval(nextI); if (!isActive) { setSecondsRemaining(nextI); broadcast({ secondsRemaining: nextI }); } }} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => { const nextI = emomInterval + 15; setEmomInterval(nextI); if (!isActive) { setSecondsRemaining(nextI); broadcast({ secondsRemaining: nextI }); } }} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
               </div>
             </div>
             <div className="flex items-center justify-between bg-[#020b1c] px-3 py-2 rounded-xl border border-[#0047BA]">
               <span className="text-xs font-bold text-blue-200">Rnds: {emomRounds}</span>
               <div className="flex gap-1.5">
-                <button onClick={() => setEmomRounds(r => Math.max(1, r - 1))} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
-                <button onClick={() => setEmomRounds(r => r + 1)} className="hover:text-white"><Plus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setEmomRounds(r => Math.max(1, r - 1))} className="p-1 text-blue-300 hover:text-white"><Minus className="w-4 h-4" /></button>
+                <button type="button" onClick={() => setEmomRounds(r => r + 1)} className="p-1 text-blue-300 hover:text-white"><Plus className="w-4 h-4" /></button>
               </div>
             </div>
           </div>
@@ -541,11 +653,9 @@ export default function WorkoutEngine() {
       {/* Action Buttons */}
       <div className="flex items-center justify-center gap-3">
         <button
-          onClick={() => {
-            soundEngine.playWorkGo();
-            setIsActive(!isActive);
-          }}
-          className={`flex items-center justify-center gap-2 flex-1 max-w-xs py-3.5 rounded-2xl font-black text-lg tracking-wider transition shadow-2xl ${
+          type="button"
+          onClick={handleToggleActive}
+          className={`flex items-center justify-center gap-2 flex-1 max-w-xs py-3.5 rounded-2xl font-black text-lg tracking-wider transition shadow-2xl cursor-pointer ${
             isActive
               ? 'bg-[#E32636] hover:bg-[#c91e2c] text-white shadow-lg shadow-[#E32636]/40'
               : 'bg-[#0047BA] hover:bg-[#003da5] text-white shadow-lg shadow-[#0047BA]/50 border border-white/20'
@@ -553,7 +663,7 @@ export default function WorkoutEngine() {
         >
           {isActive ? <><Pause className="w-5 h-5 fill-current" /> PAUSE</> : <><Play className="w-5 h-5 fill-current" /> START</>}
         </button>
-        <button onClick={resetTimer} className="p-3.5 bg-[#020b1c] hover:bg-[#001f5c] text-blue-200 rounded-2xl border border-[#0047BA] transition">
+        <button type="button" onClick={resetTimer} className="p-3.5 bg-[#020b1c] hover:bg-[#001f5c] text-blue-200 rounded-2xl border border-[#0047BA] transition cursor-pointer">
           <RotateCcw className="w-5 h-5" />
         </button>
       </div>
