@@ -1,16 +1,16 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'Ford Middle School PE Timer',
-  description: 'Physical Education and Athletics Interval Timer',
-};
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
-export const viewport: Viewport = {
-  themeColor: '#020b1c',
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
+export const metadata: Metadata = {
+  title: 'Allen Tempo Pulse | ATP Class Timer',
+  description: 'Ford Middle School Physical Education & Athletics Cardio Weights Timer',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
@@ -19,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-[#020b1c] text-white antialiased selection:bg-[#0047BA]">
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="bg-[#020b1c] text-white min-h-screen antialiased overflow-x-hidden">
         {children}
       </body>
     </html>
