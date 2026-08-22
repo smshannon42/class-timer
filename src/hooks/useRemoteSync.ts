@@ -36,7 +36,7 @@ export function useRemoteSync(isHost = false) {
           setIsConnected(true);
         }
       } catch (err) {
-        console.error('Error parsing remote command:', err);
+        console.error('Error parsing command:', err);
       }
     };
 

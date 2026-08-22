@@ -11,7 +11,6 @@ export default function DisplayPage() {
 
   return (
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-6 lg:p-10 select-none">
-      {/* Top Bar */}
       <div className="flex items-center justify-between bg-[#001f5c]/80 border-2 border-[#0047BA] px-6 py-4 rounded-3xl shadow-2xl">
         <MustangWordmark />
 
@@ -27,7 +26,6 @@ export default function DisplayPage() {
         </div>
       </div>
 
-      {/* Class Hub Banner */}
       <div className="bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl px-8 py-5 flex items-center justify-between shadow-2xl">
         <div>
           <div className="text-sm uppercase font-black tracking-widest text-blue-300">
@@ -59,7 +57,6 @@ export default function DisplayPage() {
         </div>
       </div>
 
-      {/* Giant Projector Engine Stage */}
       <WorkoutEngine incomingCommand={lastCommand} isProjectorView={true} />
 
       <div className="text-center text-sm font-black text-blue-400/60 tracking-widest uppercase">
