@@ -1,30 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// In-memory channel store for active session states
-declare global {
-  var sessionStore: Record<string, any> | undefined;
-}
+// Global cache shared between phone remote & display
+const stateMap = new Map<string, { data: any; timestamp: number }>();
 
-if (!global.sessionStore) {
-  global.sessionStore = {};
-}
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { pin, state } = await req.json();
+    const body = await req.json();
+    const { pin, state } = body;
+
     if (!pin) {
       return NextResponse.json({ error: 'Missing PIN' }, { status: 400 });
     }
-    
-    global.sessionStore![pin] = {
-      ...global.sessionStore![pin],
-      ...state,
-      updatedAt: Date.now(),
-    };
 
-    return NextResponse.json({ success: true, state: global.sessionStore![pin] });
+    const current = stateMap.get(pin)?.data || {};
+    stateMap.set(pin, {
+      data: { ...current, ...state },
+      timestamp: Date.now(),
+    });
+
+    return NextResponse.json({ success: true, state: stateMap.get(pin)!.data });
   } catch {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    return NextResponse.json({ error: 'Failed to process update' }, { status: 500 });
   }
 }
 
@@ -34,6 +32,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing PIN' }, { status: 400 });
   }
 
-  const state = global.sessionStore?.[pin] || null;
-  return NextResponse.json({ state });
+  const record = stateMap.get(pin);
+  return NextResponse.json({
+    state: record ? record.data : null,
+    timestamp: record ? record.timestamp : 0,
+  });
 }
