@@ -1,11 +1,5 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createClient, RealtimeChannel } from '@supabase/supabase-js';
-
-const SUPABASE_URL = 'https://vdrxlienzhlmvwzsdcmk.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_j1TPjY8brWt1fz2UGGVxAA_ksJ1tqdL';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export interface RemoteSyncState {
   mode: 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
@@ -18,6 +12,9 @@ export interface RemoteSyncState {
   timestamp: number;
 }
 
+// Public cloud key-value relay (Standard HTTPS)
+const FIREBASE_REST_URL = 'https://class-timer-remote-default-rtdb.firebaseio.com';
+
 export function useRemoteSync(isHost = false) {
   const [pin, setPin] = useState<string>('');
   const [isConnected, setIsConnected] = useState(false);
@@ -25,9 +22,10 @@ export function useRemoteSync(isHost = false) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [incomingSync, setIncomingSync] = useState<RemoteSyncState | null>(null);
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
   const activePinRef = useRef<string>('');
+  const lastTimestampRef = useRef<number>(0);
 
+  // Host (Projector): Assign clean 4-digit PIN & poll REST endpoint
   useEffect(() => {
     if (!isHost) return;
 
@@ -35,28 +33,28 @@ export function useRemoteSync(isHost = false) {
     setPin(hostPin);
     activePinRef.current = hostPin;
 
-    const channel = supabase.channel(`room_${hostPin}`, {
-      config: { broadcast: { self: false } },
-    });
-
-    channelRef.current = channel;
-
-    channel
-      .on('broadcast', { event: 'sync' }, ({ payload }) => {
-        setIncomingSync(payload as RemoteSyncState);
-        setIsConnected(true);
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[Display] Subscribed to room:', hostPin);
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`${FIREBASE_REST_URL}/rooms/${hostPin}.json?ts=${Date.now()}`, {
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const data: RemoteSyncState | null = await res.json();
+          if (data && data.timestamp > lastTimestampRef.current) {
+            lastTimestampRef.current = data.timestamp;
+            setIncomingSync(data);
+            setIsConnected(true);
+          }
         }
-      });
+      } catch {
+        // Silent recovery on standard network blips
+      }
+    }, 300);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(pollInterval);
   }, [isHost]);
 
+  // Client (Phone): Connect to PIN
   const connectToHost = useCallback(async (targetPin: string) => {
     const cleanPin = targetPin.trim();
     if (!cleanPin) return;
@@ -64,40 +62,59 @@ export function useRemoteSync(isHost = false) {
     setIsConnecting(true);
     setErrorMessage(null);
 
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
+    try {
+      const payload: RemoteSyncState = {
+        mode: 'WARMUP',
+        isActive: false,
+        secondsRemaining: 180,
+        currentRound: 1,
+        isWorkPhase: true,
+        warmupPhase: 'RUN',
+        stretchRound: 1,
+        timestamp: Date.now(),
+      };
 
-    const channel = supabase.channel(`room_${cleanPin}`, {
-      config: { broadcast: { self: false } },
-    });
+      const res = await fetch(`${FIREBASE_REST_URL}/rooms/${cleanPin}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    channelRef.current = channel;
-
-    channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
+      if (res.ok) {
         setPin(cleanPin);
         activePinRef.current = cleanPin;
         setIsConnected(true);
         setIsConnecting(false);
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        setErrorMessage('Failed to connect to PIN. Try again.');
+      } else {
+        setErrorMessage('Failed to connect to PIN.');
         setIsConnecting(false);
       }
-    });
+    } catch {
+      setErrorMessage('Network connection error.');
+      setIsConnecting(false);
+    }
   }, []);
 
+  // Broadcast state changes directly over HTTPS PUT
   const broadcastState = useCallback(async (state: Omit<RemoteSyncState, 'timestamp'>) => {
-    const channel = channelRef.current;
-    if (!channel) return;
+    const currentPin = activePinRef.current || pin;
+    if (!currentPin) return;
 
-    const payload: RemoteSyncState = { ...state, timestamp: Date.now() };
-    await channel.send({
-      type: 'broadcast',
-      event: 'sync',
-      payload,
-    });
-  }, []);
+    try {
+      const payload: RemoteSyncState = {
+        ...state,
+        timestamp: Date.now(),
+      };
+
+      await fetch(`${FIREBASE_REST_URL}/rooms/${currentPin}.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('HTTPS Remote sync failed:', err);
+    }
+  }, [pin]);
 
   return {
     peerId: pin,
