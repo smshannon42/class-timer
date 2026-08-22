@@ -1,20 +1,23 @@
 'use client';
 import React, { useState } from 'react';
-import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX, Radio } from 'lucide-react';
+import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX, Radio, Check, X } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
 import { MustangWordmark } from '@/components/MustangLogos';
 import { BELL_SCHEDULE } from '@/data/schedule';
 import { soundEngine } from '@/utils/audio';
+import { useRemoteSync } from '@/hooks/useRemoteSync';
 
 export default function Home() {
   const [manualPeriodId, setManualPeriodId] = useState<string>('AUTO');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [isCasting, setIsCasting] = useState(false);
+  const [isAntennaModalOpen, setIsAntennaModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
   useWakeLock();
 
+  const { isConnected, connectToHost } = useRemoteSync(false);
   const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown(manualPeriodId);
 
   const toggleFullscreen = () => {
@@ -31,12 +34,10 @@ export default function Home() {
     soundEngine.isMuted = nextMute;
   };
 
-  const handleOpenProjector = () => {
-    setIsCasting(true);
-    // Opens a clean projector/second monitor viewport window
-    const win = window.open(window.location.href, '_blank', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
-    if (win) {
-      win.focus();
+  const handlePairWithDisplay = () => {
+    if (pinInput.trim().length > 0) {
+      connectToHost(pinInput.trim());
+      setIsAntennaModalOpen(false);
     }
   };
 
@@ -65,15 +66,15 @@ export default function Home() {
               </select>
             </div>
 
-            {/* Projector Broadcast Antenna Button */}
+            {/* Antenna Connect Button */}
             <button
-              onClick={handleOpenProjector}
+              onClick={() => setIsAntennaModalOpen(true)}
               className={`p-2 rounded-xl border transition flex items-center gap-1 ${
-                isCasting
-                  ? 'bg-[#E32636] text-white border-white/40 shadow-lg shadow-[#E32636]/50 animate-pulse'
+                isConnected
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-lg shadow-emerald-600/40'
                   : 'bg-[#020b1c] text-blue-300 hover:text-white border-[#0047BA]'
               }`}
-              title="Push to Projector / External Screen"
+              title="Pair with Projector Screen"
             >
               <Radio className="w-4 h-4" />
             </button>
@@ -83,7 +84,6 @@ export default function Home() {
               className={`p-2 rounded-xl border transition ${
                 isMuted ? 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50' : 'bg-[#020b1c] text-emerald-400 border-[#0047BA]'
               }`}
-              title="Toggle Audio"
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -91,12 +91,43 @@ export default function Home() {
             <button
               onClick={toggleFullscreen}
               className="p-2 bg-[#020b1c] hover:bg-[#0047BA]/40 border border-[#0047BA] rounded-xl text-white transition"
-              title="Fullscreen Mode"
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
           </div>
         </div>
+
+        {/* Pairing Modal */}
+        {isAntennaModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-[#001f5c] border-2 border-[#0047BA] p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-lg font-black text-white">Projector Antenna Link</span>
+                <button onClick={() => setIsAntennaModalOpen(false)} className="text-blue-300 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-blue-200 mb-4">
+                Open <span className="text-emerald-400 font-mono">/display</span> on the projector computer, then type its 4-digit PIN here:
+              </p>
+              <input
+                type="text"
+                placeholder="4-digit PIN"
+                maxLength={6}
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                className="w-full text-center bg-[#020b1c] border-2 border-[#0047BA] text-white font-mono font-black text-4xl rounded-2xl p-3 focus:outline-none focus:border-[#E32636] mb-4"
+              />
+              <button
+                onClick={handlePairWithDisplay}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-[#0047BA] hover:bg-[#003da5] rounded-xl text-white font-black transition shadow-lg"
+              >
+                <Check className="w-5 h-5" />
+                Connect Screen
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Unified Class Hub Status Strip */}
         <div className="bg-[#001f5c]/90 border border-[#0047BA] rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl">

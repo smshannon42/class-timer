@@ -1,61 +1,91 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
-import Peer, { DataConnection } from 'peerjs';
+import { useEffect, useRef, useState } from 'react';
+import type { DataConnection, Peer } from 'peerjs';
 
-export function useRemoteSync(onCommandReceived?: (data: any) => void) {
-  const [roomCode, setRoomCode] = useState<string>('');
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [isHost, setIsHost] = useState<boolean>(false);
-  const peerRef = useRef<Peer | null>(null);
+export interface RemoteState {
+  mode: 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
+  isActive: boolean;
+  secondsRemaining: number;
+  currentRound: number;
+  isWorkPhase: boolean;
+  warmupPhase: 'RUN' | 'STRETCH';
+  stretchRound: number;
+  manualPeriodId: string;
+}
+
+export function useRemoteSync(isHost = false, hostId?: string) {
+  const [peerId, setPeerId] = useState<string>('');
+  const [isConnected, setIsConnected] = useState(false);
   const connRef = useRef<DataConnection | null>(null);
+  const peerRef = useRef<Peer | null>(null);
+  const [incomingState, setIncomingState] = useState<Partial<RemoteState> | null>(null);
 
-  const initHost = () => {
-    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const peerId = `mustang-pulse-${code}`;
-    const peer = new Peer(peerId);
+  useEffect(() => {
+    let peer: Peer;
 
-    peer.on('open', () => {
-      setRoomCode(code);
-      setIsHost(true);
-    });
+    import('peerjs').then(({ default: Peer }) => {
+      // 4-digit readable pin for host or auto-generated ID
+      const generatedId = isHost 
+        ? Math.floor(1000 + Math.random() * 9000).toString()
+        : undefined;
 
-    peer.on('connection', (conn) => {
-      connRef.current = conn;
-      conn.on('open', () => setIsConnected(true));
-      conn.on('data', (data) => {
-        if (onCommandReceived) onCommandReceived(data);
+      peer = new Peer(generatedId || '', {
+        debug: 1,
       });
-      conn.on('close', () => setIsConnected(false));
+
+      peerRef.current = peer;
+
+      peer.on('open', (id) => {
+        setPeerId(id);
+        if (!isHost && hostId) {
+          connectToHost(hostId);
+        }
+      });
+
+      if (isHost) {
+        peer.on('connection', (conn) => {
+          connRef.current = conn;
+          setIsConnected(true);
+
+          conn.on('data', (data: any) => {
+            setIncomingState(data);
+          });
+
+          conn.on('close', () => setIsConnected(false));
+        });
+      }
     });
 
-    peerRef.current = peer;
+    return () => {
+      peerRef.current?.destroy();
+    };
+  }, [isHost]);
+
+  const connectToHost = (targetPin: string) => {
+    if (!peerRef.current) return;
+    const conn = peerRef.current.connect(targetPin);
+    connRef.current = conn;
+
+    conn.on('open', () => {
+      setIsConnected(true);
+    });
+
+    conn.on('close', () => {
+      setIsConnected(false);
+    });
   };
 
-  const connectToHost = (targetCode: string) => {
-    const peer = new Peer();
-    peer.on('open', () => {
-      const conn = peer.connect(`mustang-pulse-${targetCode.toUpperCase()}`);
-      conn.on('open', () => {
-        connRef.current = conn;
-        setIsConnected(true);
-        setRoomCode(targetCode.toUpperCase());
-      });
-      conn.on('close', () => setIsConnected(false));
-    });
-    peerRef.current = peer;
-  };
-
-  const sendCommand = (action: string, payload?: any) => {
-    if (connRef.current && connRef.current.open) {
-      connRef.current.send({ action, payload });
+  const sendState = (state: Partial<RemoteState>) => {
+    if (connRef.current && isConnected) {
+      connRef.current.send(state);
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (peerRef.current) peerRef.current.destroy();
-    };
-  }, []);
-
-  return { roomCode, isConnected, isHost, initHost, connectToHost, sendCommand };
+  return {
+    peerId,
+    isConnected,
+    connectToHost,
+    sendState,
+    incomingState,
+  };
 }
