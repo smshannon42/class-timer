@@ -230,7 +230,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               }
             });
           } else {
-            // WARMUP RUN
+            // WARM-UP RUN
             setSecondsRemaining((prev) => {
               if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
               if (prev > 1) {
@@ -538,7 +538,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             AMRAP: {formatTime(amrapTotalSeconds)}
           </span>
         ) : (
-          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#004text-white border-2 border-[#0047BA]">
+          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#00 text-white border-2 border-[#0047BA]">
             FOR TIME: {formatTime(forTimeTotalSeconds)}
           </span>
         )}
@@ -644,6 +644,25 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         ) : null}
       </div>
 
+      {/* Post Rest Edit Modal */}
+      {isEditingPostRest && (
+        <div className="flex items-center justify-center gap-3 bg-[#020b1c] p-4 rounded-3xl border-2 border-[#0047BA] max-w-sm mx-auto mb-6 shadow-2xl">
+          <input
+            type="number"
+            value={editPostRestInput}
+            onChange={(e) => setEditPostRestInput(e.target.value)}
+            className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-3xl rounded-2xl p-2"
+          />
+          <span className="text-sm text-blue-300 font-bold">Seconds</span>
+          <button type="button" onClick={handleSavePostRest} className="p-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white">
+            <Check className="w-6 h-6 stroke-[3]" />
+          </button>
+          <button type="button" onClick={() => setIsEditingPostRest(false)} className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300">
+            <X className="w-6 h-6 stroke-[3]" />
+          </button>
+        </div>
+      )}
+
       {/* DYNAMIC CARD: BIG BUTTONS TO CHOOSE BETWEEN STRETCHES OR RUN */}
       {!isProjectorView && (mode === 'DYNAMIC' || mode === 'WARMUP') && (
         <div className="space-y-4 max-w-lg mx-auto mb-6">
@@ -679,7 +698,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             </div>
           )}
 
-          {/* Steppers based on chosen Dynamic Sub-Mode /}
+          {/* Steppers based on chosen Dynamic Sub-Mode */}
           {!isActive && dynamicSubMode === 'STRETCH' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3 rounded-2xl shadow-lg">
@@ -719,7 +738,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 <span>30s Run</span>
               </button>
               <button
-                type="button"
+               type="button"
                 onClick={() => adjustWarmupRunSeconds(30)}
                 className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-2xl text-sm font-mono font-black shadow-xl transition cursor-pointer"
               >
