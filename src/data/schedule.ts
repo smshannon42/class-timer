@@ -1,63 +1,46 @@
-export interface Period {
+export interface PeriodSchedule {
   id: string;
   name: string;
-  startHour: number;
-  startMinute: number;
-  endHour: number;
-  endMinute: number;
-  cleanupHour: number;
-  cleanupMinute: number;
+  startMinutes: number; // minutes from midnight
+  endMinutes: number;   // workout end cutoff (minutes from midnight)
+  cleanupMinutes?: number;
 }
 
-export const BELL_SCHEDULE: Period[] = [
+// Target Workout End Times:
+// 1st: 8:50 AM (530)
+// 3rd: 10:38 AM (638)
+// 6th: 1:40 PM / 13:40 (820)
+// 7th: 2:29 PM / 14:29 (869)
+// 8th: 3:25 PM / 15:25 (925)
+export const BELL_SCHEDULE: PeriodSchedule[] = [
   {
-    id: 'p1',
+    id: '1st',
     name: '1st Period',
-    startHour: 8,
-    startMinute: 20,
-    endHour: 9,
-    endMinute: 0,
-    cleanupHour: 8,
-    cleanupMinute: 52,
+    startMinutes: 8 * 60 + 20, // 8:20 AM
+    endMinutes: 8 * 60 + 50,   // 8:50 AM (Workout End)
   },
   {
-    id: 'p3',
+    id: '3rd',
     name: '3rd Period',
-    startHour: 9,
-    startMinute: 5,
-    endHour: 9,
-    endMinute: 45,
-    cleanupHour: 9,
-    cleanupMinute: 38,
+    startMinutes: 9 * 60 + 5,  // 9:05 AM
+    endMinutes: 10 * 60 + 38,  // 10:38 AM (Workout End)
   },
   {
-    id: 'p6',
+    id: '6th',
     name: '6th Period',
-    startHour: 13,
-    startMinute: 0,
-    endHour: 13,
-    endMinute: 45,
-    cleanupHour: 13,
-    cleanupMinute: 38,
+    startMinutes: 13 * 60 + 0, // 1:00 PM
+    endMinutes: 13 * 60 + 40,  // 1:40 PM (Workout End)
   },
   {
-    id: 'p7',
+    id: '7th',
     name: '7th Period',
-    startHour: 13,
-    startMinute: 50,
-    endHour: 14,
-    endMinute: 35,
-    cleanupHour: 14,
-    cleanupMinute: 28,
+    startMinutes: 13 * 60 + 50, // 1:50 PM
+    endMinutes: 14 * 60 + 29,  // 2:29 PM (Workout End)
   },
   {
-    id: 'p8',
+    id: '8th',
     name: '8th Period',
-    startHour: 14,
-    startMinute: 40,
-    endHour: 15,
-    endMinute: 30,
-    cleanupHour: 15,
-    cleanupMinute: 25,
+    startMinutes: 14 * 60 + 40, // 2:40 PM
+    endMinutes: 15 * 60 + 25,  // 3:25 PM (Workout End)
   },
 ];
