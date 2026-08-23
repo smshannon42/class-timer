@@ -1,70 +1,79 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { BELL_SCHEDULE, Period } from '@/data/schedule';
+import { BELL_SCHEDULE, PeriodSchedule } from '@/data/schedule';
 
 export function useAutoPeriodCountdown(manualPeriodId: string = 'AUTO') {
-  const [currentPeriod, setCurrentPeriod] = useState<Period | null>(null);
-  const [isPassingPeriod, setIsPassingPeriod] = useState(false);
-  const [bellSecLeft, setBellSecLeft] = useState<number>(0);
+  const [currentPeriod, setCurrentPeriod] = useState<PeriodSchedule | null>(null);
+  const [isPassingPeriod, setIsPassingPeriod] = useState<boolean>(false);
+  const [bellTimeFormatted, setBellTimeFormatted] = useState<string>('--:--');
+  const [cleanupTimeFormatted, setCleanupTimeFormatted] = useState<string | null>(null);
   const [cleanupSecLeft, setCleanupSecLeft] = useState<number | null>(null);
 
   useEffect(() => {
     const updateCountdown = () => {
       const now = new Date();
-      const currentSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const currentSeconds = now.getSeconds();
+      const currentTotalSeconds = currentMinutes * 60 + currentSeconds;
 
       if (manualPeriodId !== 'AUTO') {
-        const manualP = BELL_SCHEDULE.find((p) => p.id === manualPeriodId);
-        if (manualP) {
-          const pEndSec = manualP.endHour * 3600 + manualP.endMinute * 60;
-          const pCleanSec = manualP.cleanupHour * 3600 + manualP.cleanupMinute * 60;
-          
-          setCurrentPeriod(manualP);
+        const selected = BELL_SCHEDULE.find((p) => p.id === manualPeriodId);
+        if (selected) {
+          setCurrentPeriod(selected);
           setIsPassingPeriod(false);
-          setBellSecLeft(Math.max(0, pEndSec - currentSeconds));
-          setCleanupSecLeft(currentSeconds < pCleanSec ? pCleanSec - currentSeconds : 0);
+
+          const endTotalSec = (selected.endHour * 60 + selected.endMinute) * 60;
+          const diffSec = Math.max(0, endTotalSec - currentTotalSeconds);
+          const m = Math.floor(diffSec / 60);
+          const s = diffSec % 60;
+          setBellTimeFormatted(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+          setCleanupTimeFormatted(null);
+          setCleanupSecLeft(null);
           return;
         }
       }
 
-      let foundActive: Period | null = null;
-      let nextPeriod: Period | null = null;
+      let active: PeriodSchedule | null = null;
+      let upcoming: PeriodSchedule | null = null;
 
-      for (let i = 0; i < BELL_SCHEDULE.length; i++) {
-        const p = BELL_SCHEDULE[i];
-        const pStartSec = p.startHour * 3600 + p.startMinute * 60;
-        const pEndSec = p.endHour * 3600 + p.endMinute * 60;
+      for (const p of BELL_SCHEDULE) {
+        const startSec = (p.startHour * 60 + p.startMinute) * 60;
+        const endSec = (p.endHour * 60 + p.endMinute) * 60;
 
-        if (currentSeconds >= pStartSec && currentSeconds < pEndSec) {
-          foundActive = p;
+        if (currentTotalSeconds >= startSec && currentTotalSeconds < endSec) {
+          active = p;
           break;
         }
 
-        if (currentSeconds < pStartSec && !nextPeriod) {
-          nextPeriod = p;
+        if (currentTotalSeconds < startSec && !upcoming) {
+          upcoming = p;
         }
       }
 
-      if (foundActive) {
-        const pEndSec = foundActive.endHour * 3600 + foundActive.endMinute * 60;
-        const pCleanSec = foundActive.cleanupHour * 3600 + foundActive.cleanupMinute * 60;
-
-        setCurrentPeriod(foundActive);
+      if (active) {
+        setCurrentPeriod(active);
         setIsPassingPeriod(false);
-        setBellSecLeft(Math.max(0, pEndSec - currentSeconds));
-        setCleanupSecLeft(currentSeconds < pCleanSec ? pCleanSec - currentSeconds : 0);
-      } else if (nextPeriod) {
-        const nextStartSec = nextPeriod.startHour * 3600 + nextPeriod.startMinute * 60;
-        setCurrentPeriod(nextPeriod);
+        const endSec = (active.endHour * 60 + active.endMinute) * 60;
+        const diffSec = Math.max(0, endSec - currentTotalSeconds);
+        const m = Math.floor(diffSec / 60);
+        const s = diffSec % 60;
+        setBellTimeFormatted(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+      } else if (upcoming) {
+        setCurrentPeriod(upcoming);
         setIsPassingPeriod(true);
-        setBellSecLeft(Math.max(0, nextStartSec - currentSeconds));
-        setCleanupSecLeft(null);
+        const startSec = (upcoming.startHour * 60 + upcoming.startMinute) * 60;
+        const diffSec = Math.max(0, startSec - currentTotalSeconds);
+        const m = Math.floor(diffSec / 60);
+        const s = diffSec % 60;
+        setBellTimeFormatted(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
       } else {
         setCurrentPeriod(null);
         setIsPassingPeriod(false);
-        setBellSecLeft(0);
-        setCleanupSecLeft(null);
+        setBellTimeFormatted('--:--');
       }
+
+      setCleanupTimeFormatted(null);
+      setCleanupSecLeft(null);
     };
 
     updateCountdown();
@@ -72,18 +81,11 @@ export function useAutoPeriodCountdown(manualPeriodId: string = 'AUTO') {
     return () => clearInterval(interval);
   }, [manualPeriodId]);
 
-  const formatSeconds = (sec: number) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
   return {
     currentPeriod,
     isPassingPeriod,
-    bellTimeFormatted: formatSeconds(bellSecLeft),
-    cleanupTimeFormatted: cleanupSecLeft !== null ? formatSeconds(cleanupSecLeft) : null,
+    bellTimeFormatted,
+    cleanupTimeFormatted,
     cleanupSecLeft,
-    bellSecLeft,
   };
 }
