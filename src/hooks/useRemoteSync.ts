@@ -10,7 +10,7 @@ export interface RemoteSyncState {
   isWorkPhase: boolean;
   dynamicSubMode?: 'STRETCH' | 'RUN';
   stretchRound?: number;
-  enginePhase?: 'IDLE' | 'PREP_15' | 'RUNNING' | 'POST_REST_90' | 'FINISHED';
+  enginePhase?: 'IDLE' | 'PREP_15' | 'RUNNING' | 'CARD_FLASH' | 'POST_REST_90' | 'FINISHED';
   timestamp: number;
 }
 

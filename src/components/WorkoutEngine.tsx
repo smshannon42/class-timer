@@ -16,7 +16,7 @@ type DynamicSubMode = 'STRETCH' | 'RUN';
 export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorView = false }: WorkoutEngineProps) {
   const [mode, setMode] = useState<WorkoutMode>('DYNAMIC');
   const [dynamicSubMode, setDynamicSubMode] = useState<DynamicSubMode>('RUN');
-  const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_15' | 'RUNNING' | 'POST_REST_90' | 'FINISHED'>('IDLE');
+  const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_15' | 'RUNNING' | 'CARD_FLASH' | 'POST_REST_90' | 'FINISHED'>('IDLE');
 
   // Dynamic Stretch Settings (6 rounds x 20s = 2:00)
   const [stretchSeconds, setStretchSeconds] = useState(180);
@@ -159,6 +159,20 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     if (isActive) {
       timer = setInterval(() => {
+        if ((enginePhase as string) === 'CARD_FLASH') {
+          setSecondsRemaining((prev) => {
+            if (prev > 1) {
+              const next = prev - 1;
+              emit({ secondsRemaining: next, isActive: true, enginePhase: 'CARD_FLASH' as any });
+              return next;
+            }
+            soundEngine.playRest();
+            setEnginePhase('POST_REST_90');
+            emit({ secondsRemaining: postRestSeconds, isActive: true, enginePhase: 'POST_REST_90' });
+            return postRestSeconds;
+          });
+          return;
+        }
         if (enginePhase === 'PREP_15') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
@@ -189,7 +203,8 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           return;
         }
 
-        if (enginePhase === 'POST_REST_90') {
+        if ((enginePhase as string) === 'CARD_FLASH') return 'text-amber-400 animate-pulse drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]';
+    if (enginePhase === 'POST_REST_90') {
           setSecondsRemaining((prev) => {
             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
             if (prev > 1) {
@@ -239,10 +254,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 emit({ secondsRemaining: next, isActive: true });
                 return next;
               }
-              soundEngine.playRest();
-              setEnginePhase('POST_REST_90');
-              emit({ secondsRemaining: postRestSeconds, isActive: true });
-              return postRestSeconds;
+              soundEngine.playCleanupChime();
+              setEnginePhase('CARD_FLASH');
+              emit({ secondsRemaining: 5, isActive: true, enginePhase: 'CARD_FLASH' as any });
+              return 5;
             });
           }
         } else if (mode === 'TABATA') {
@@ -267,10 +282,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 emit({ isWorkPhase: true, currentRound: nextR, secondsRemaining: tabataWork, isActive: true });
                 return tabataWork;
               } else {
-                soundEngine.playRest();
-                setEnginePhase('POST_REST_90');
-                emit({ secondsRemaining: postRestSeconds, isActive: true });
-                return postRestSeconds;
+                soundEngine.playCleanupChime();
+              setEnginePhase('CARD_FLASH');
+              emit({ secondsRemaining: 5, isActive: true, enginePhase: 'CARD_FLASH' as any });
+              return 5;
               }
             }
           });
@@ -289,10 +304,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               emit({ currentRound: nextR, secondsRemaining: emomInterval, isActive: true });
               return emomInterval;
             } else {
-              soundEngine.playRest();
-              setEnginePhase('POST_REST_90');
-              emit({ secondsRemaining: postRestSeconds, isActive: true });
-              return postRestSeconds;
+              soundEngine.playCleanupChime();
+              setEnginePhase('CARD_FLASH');
+              emit({ secondsRemaining: 5, isActive: true, enginePhase: 'CARD_FLASH' as any });
+              return 5;
             }
           });
         } else if (mode === 'AMRAP' || mode === 'FOR_TIME') {
@@ -303,10 +318,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               emit({ secondsRemaining: next, isActive: true });
               return next;
             }
-            soundEngine.playRest();
-            setEnginePhase('POST_REST_90');
-            emit({ secondsRemaining: postRestSeconds, isActive: true });
-            return postRestSeconds;
+            soundEngine.playCleanupChime();
+              setEnginePhase('CARD_FLASH');
+              emit({ secondsRemaining: 5, isActive: true, enginePhase: 'CARD_FLASH' as any });
+              return 5;
           });
         }
       }, 1000);
@@ -466,6 +481,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const handleSavePostRest = () => {
     const val = parseInt(editPostRestInput) || 90;
     setPostRestSeconds(val);
+    if ((enginePhase as string) === 'CARD_FLASH') return 'text-amber-400 animate-pulse drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]';
     if (enginePhase === 'POST_REST_90') {
       setSecondsRemaining(val);
       emit({ secondsRemaining: val });
@@ -481,6 +497,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   const getTimerTextColor = () => {
     if (enginePhase === 'PREP_15') return 'text-amber-400';
+    if ((enginePhase as string) === 'CARD_FLASH') return 'text-amber-400 animate-pulse drop-shadow-[0_0_20px_rgba(251,191,36,0.8)]';
     if (enginePhase === 'POST_REST_90') return 'text-[#E32636]';
     if (mode === 'TABATA' && !isWorkPhase) return 'text-[#E32636]';
     return 'text-white';
@@ -595,7 +612,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         <div className={`text-center font-mono font-black tracking-tight my-3 select-none ${
           isProjectorView ? 'text-[16vw] leading-none' : 'text-8xl sm:text-9xl landscape:text-[25vh]'
         } ${getTimerTextColor()}`}>
-          {formatTime(secondsRemaining)}
+          {(enginePhase as string) === 'CARD_FLASH' ? '00:00' : formatTime(secondsRemaining)}
         </div>
       )}
 
