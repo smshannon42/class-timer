@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Maximize2, Minimize2, SlidersHorizontal, Sparkles, Volume2, VolumeX, Radio, Check, X, Loader2 } from 'lucide-react';
+import { Maximize2, Minimize2, SlidersHorizontal, Volume2, VolumeX, Radio, Check, X, Loader2 } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useAutoPeriodCountdown } from '@/hooks/useAutoPeriodCountdown';
 import WorkoutEngine from '@/components/WorkoutEngine';
@@ -17,7 +17,7 @@ export default function Home() {
   useWakeLock();
 
   const { isConnected, isConnecting, errorMessage, connectToHost, broadcastState } = useRemoteSync(false);
-  const { currentPeriod, isPassingPeriod, bellTimeFormatted, cleanupTimeFormatted, cleanupSecLeft } = useAutoPeriodCountdown(manualPeriodId);
+  const { currentPeriod, isPassingPeriod, bellTimeFormatted } = useAutoPeriodCountdown(manualPeriodId);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -44,10 +44,9 @@ export default function Home() {
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none">
       <div className="max-w-5xl mx-auto w-full space-y-4">
         
-        {/* TOP HEADER WITH DIRECT ATP VECTOR LOGO */}
+        {/* Top Header Bar with ATP Vector Branding */}
         <div className="flex items-center justify-between gap-2 bg-[#001f5c]/70 border border-[#0047BA] px-3.5 py-2.5 rounded-2xl backdrop-blur-md">
           <div className="flex items-center gap-2.5 select-none">
-            {/* Tactical Hex Heartbeat Logo Icon */}
             <div className="relative flex items-center justify-center w-10 h-10 bg-[#020b1c] border-2 border-[#0047BA] rounded-xl shadow-md p-1">
               <svg
                 viewBox="0 0 100 100"
@@ -82,7 +81,6 @@ export default function Home() {
               </svg>
             </div>
 
-            {/* Brand Typography */}
             <div className="flex flex-col leading-none">
               <div className="flex items-center gap-1.5">
                 <span className="font-black text-xl tracking-tight text-white font-mono">
@@ -210,36 +208,23 @@ export default function Home() {
           </div>
         )}
 
-        {/* Period Countdown Box */}
+        {/* SINGLE WORKOUT END CLOCK BOX */}
         <div className="bg-[#001f5c]/90 border-2 border-[#0047BA] rounded-3xl px-6 py-5 flex items-center justify-between shadow-2xl">
           <div>
             <div className="text-xs sm:text-sm uppercase font-black tracking-widest text-blue-300 mb-1">
-              {isPassingPeriod ? 'NEXT CLASS IN' : 'ACTIVE CLASS PERIOD'}
+              {isPassingPeriod ? 'UPCOMING PERIOD' : 'ACTIVE PERIOD'}
             </div>
             <div className="text-2xl sm:text-4xl lg:text-5xl font-black text-white leading-none">
               {currentPeriod ? currentPeriod.name : 'Off Schedule'}
             </div>
           </div>
 
-          <div className="flex items-center gap-6 sm:gap-10">
-            {cleanupTimeFormatted !== null && (
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-1 text-xs uppercase font-black text-[#E32636] mb-1">
-                  <Sparkles className="w-3.5 h-3.5" /> Cleanup
-                </div>
-                <div className={`text-3xl sm:text-5xl font-mono font-black ${cleanupSecLeft === 0 ? 'text-amber-400 animate-pulse' : 'text-[#E32636]'}`}>
-                  {cleanupSecLeft === 0 ? 'DONE' : cleanupTimeFormatted}
-                </div>
-              </div>
-            )}
-
-            <div className="text-right">
-              <div className="text-xs sm:text-sm uppercase font-black text-blue-300 mb-1">
-                {isPassingPeriod ? 'STARTS IN' : 'PERIOD BELL'}
-              </div>
-              <div className="text-4xl sm:text-6xl lg:text-7xl font-mono font-black text-emerald-400 leading-none">
-                {bellTimeFormatted}
-              </div>
+          <div className="text-right">
+            <div className="text-xs sm:text-sm uppercase font-black text-blue-300 mb-1">
+              {isPassingPeriod ? 'STARTS IN' : 'WORKOUT END'}
+            </div>
+            <div className="text-4xl sm:text-6xl lg:text-7xl font-mono font-black text-emerald-400 leading-none">
+              {bellTimeFormatted}
             </div>
           </div>
         </div>
