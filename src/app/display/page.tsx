@@ -13,7 +13,7 @@ export default function DisplayPage() {
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-6 lg:p-10 select-none">
       <div className="absolute top-6 left-8 z-50 flex items-center gap-4 scale-75 sm:scale-100 origin-top-left drop-shadow-xl">
         {/* Hexagon Icon Container */}
-        <div className="w-16 h-16 rounded-2xl border-2 border-[#0066FF] bg-[#0A1128] flex items-center justify-center shadow-lg">
+        <div className="w-16 h-16 rounded-2xl !border-transparent border-[#0066FF] bg-[#0A1128] flex items-center justify-center shadow-none">
           <svg viewBox="0 0 100 100" className="w-12 h-12">
             <polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="white" stroke="#0066FF" strokeWidth="6" strokeLinejoin="round" />
             <polyline points="10,50 35,50" fill="none" stroke="#0066FF" strokeWidth="6" strokeLinecap="round" />
