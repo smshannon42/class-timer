@@ -63,7 +63,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         secondsRemaining,
         currentRound,
         isWorkPhase,
-        warmupPhase: warmupPhase === 'POST_RUN_REST' || warmupPhase === 'WAITING_FOR_STRETCH' ? 'REST' : warmupPhase,
+        warmupPhase,
         stretchRound,
         ...override,
       });
@@ -78,7 +78,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       setCurrentRound(incomingState.currentRound);
       setIsWorkPhase(incomingState.isWorkPhase);
       setWarmupPhase((incomingState.warmupPhase as any) || 'RUN');
-      setStretchRound(incomingState.stretchRound);
+      setStretchRound(incomingState.stretchRound || 1);
     }
   }, [incomingState, isProjectorView]);
 
@@ -201,13 +201,13 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             if (warmupPhase === 'RUN') {
               soundEngine.playRest();
               setWarmupPhase('POST_RUN_REST');
-              emit({ warmupPhase: 'REST', secondsRemaining: postRunRestSeconds, isActive: true });
+              emit({ warmupPhase: 'POST_RUN_REST', secondsRemaining: postRunRestSeconds, isActive: true });
               return postRunRestSeconds;
             } else if (warmupPhase === 'POST_RUN_REST') {
               soundEngine.playRest();
               setWarmupPhase('WAITING_FOR_STRETCH');
-              setIsActive(false); // Pause timer so coach can explain
-              emit({ warmupPhase: 'REST', secondsRemaining: stretchIntervalSeconds, isActive: false });
+              setIsActive(false);
+              emit({ warmupPhase: 'WAITING_FOR_STRETCH', secondsRemaining: stretchIntervalSeconds, isActive: false });
               return stretchIntervalSeconds;
             } else if (warmupPhase === 'STRETCH') {
               if (stretchRound < totalStretchRounds) {
@@ -481,7 +481,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         ) : mode === 'WARMUP' ? (
           <span className={`text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 ${
             warmupPhase === 'POST_RUN_REST'
-          g-[#E32636]/20 text-[#E32636] border-[#E32636]/50 animate-pulse'
+              ? 'bg-[#E32636]/20 text-[#E3rder-[#E32636]/50 animate-pulse'
               : warmupPhase === 'WAITING_FOR_STRETCH'
               ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
               : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
@@ -512,12 +512,59 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         )}
       </div>
 
-      {/* Main Clock */}
-      <div className={`text-center font-mono font-black tracking-tight my-3 select-none ${
-        isProjectorView ? 'text-[16vw] leading-none' : 'text-8xl sm:text-9xl'
-      } ${getTimerTextColor()}`}>
-        {formatTime(secondsRemaining)}
-      </div>
+      {/* Editing Custom Time Modal */}
+      {isEditingCustom ? (
+        <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#020b1c] p-6 rounded-3xl border-2 border-[#0047BA] shadow-2xl max-w-md mx-auto">
+          <span className="text-sm uppercase font-black tracking-widest text-[#E32636]">Set Custom Duration</span>
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-col items-center">
+              <span className="text-xs uppercase font-bold text-blue-300 mb-1">Mins</span>
+              <input
+                type="number"
+                min="0"
+                max="99"
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(e.target.value)}
+                className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-5xl rounded-2xl p-2.5 focus:outline-none focus:border-[#E32636]"
+              />
+            </div>
+            <span className="text-5xl font-mono font-black text-[#0047BA] mt-4">:</span>
+            <div className="flex flex-col items-center">
+              <span className="text-xs uppercase font-bold text-blue-300 mb-1">Secs</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                value={editSeconds}
+                onChange={(e) => setEditSeconds(e.target.value)}
+                className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-5xl rounded-2xl p-2.5 focus:outline-none focus:border-[#E32636]"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mt-2 w-full justify-center">
+            <button
+              type="button"
+              onClick={handleSaveCustom}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-white font-black transition text-sm cursor-pointer shadow-lg"
+            >
+              <Check className="w-5 h-5 stroke-[3]" /> Save
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsEditingCustom(false)}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-300 font-black transition text-sm cursor-pointer shadow-lg"
+            >
+              <X className="w-5 h-5 stroke-[3]" /> Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={`text-center font-mono font-black tracking-tight my-3 select-none ${
+          isProjectorView ? 'text-[16vw] leading-none' : 'text-8xl sm:text-9xl'
+        } ${getTimerTextColor()}`}>
+          {formatTime(secondsRemaining)}
+        </div>
+      )}
 
       {/* Subtitles & Skip Button */}
       <div className="text-center text-base sm:text-lg font-bold text-blue-200 mb-6">
@@ -534,6 +581,22 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               </button>
             )}
           </div>
+        ) : enginePhase === 'POST_REST_90' ? (
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-[#E32636] font-black text-xl">Heart Rate Recovery</span>
+            {!isProjectorView && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditPostRestInput(postRestSeconds.toString());
+                  setIsEditingPostRest(true);
+                }}
+                className="text-sm bg-[#020b1c] px-3.5 py-1.5 rounded-xl border-2 border-[#E32636]/60 text-white font-black flex items-center gap-1.5 cursor-pointer shadow-lg"
+              >
+                <Edit3 className="w-4 h-4" /> Edit Rest
+              </button>
+            )}
+          </div>
         ) : mode === 'WARMUP' ? (
           <span>
             {warmupPhase === 'RUN' && 'Continuous Warm-up Run'}
@@ -547,6 +610,25 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <span>Round <span className="text-white text-2xl font-black">{currentRound}</span> of {emomRounds}</span>
         ) : null}
       </div>
+
+      {/* Post Rest Edit Modal */}
+      {isEditingPostRest && (
+        <div className="flex items-center justify-center gap-3 bg-[#020b1c] p-4 rounded-3xl border-2 border-[#0047BA] max-w-sm mx-auto mb-6 shadow-2xl">
+          <input
+            type="number"
+            value={editPostRestInput}
+            onChange={(e) => setEditPostRestInput(e.target.value)}
+            className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-3xl rounded-2xl p-2"
+          />
+          <span className="text-sm text-blue-300 font-bold">Seconds</span>
+          <button type="button" onClick={handleSavePostRest} className="p-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white">
+            <Check className="w-6 h-6 stroke-[3]" />
+          </button>
+          <button type="button" onClick={() => setIsEditingPostRest(false)} className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300">
+            <X className="w-6 h-6 stroke-[3]" />
+          </button>
+        </div>
+      )}
 
       {/* Explicit Continue / Start Stretch Banner */}
       {!isProjectorView && mode === 'WARMUP' && (warmupPhase === 'WAITING_FOR_STRETCH' || warmupPhase === 'POST_RUN_REST' || (!isActive && warmupPhase === 'RUN')) && (
@@ -569,7 +651,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             onClick={() => adjustWarmupRunSeconds(-30)}
             className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-3xl text-sm font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Minus className="w-5 h-5 stroke-[3]" />
+            <Minus className="w-6 h-6 stroke-[3]" />
             <span>30s Run</span>
           </button>
           <button
@@ -577,7 +659,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             onClick={() => adjustWarmupRunSeconds(30)}
             className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-3xl text-sm font-mono font-black shadow-xl transition cursor-pointer"
           >
-            <Plus className="w-5 h-5 stroke-[3]" />
+            <Plus className="w-6 h-6 stroke-[3]" />
             <span>30s Run</span>
           </button>
         </div>
@@ -590,7 +672,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3.5 rounded-3xl shadow-lg">
               <span className="text-sm font-black uppercase text-blue-300 ml-1">Work: {tabataWork}s</span>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => adjustTabataWork(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
+                <button type="button" onClick={() => adjustTabataWork(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scle-95">
                   <Minus className="w-5 h-5 stroke-[3]" />
                 </button>
                 <button type="button" onClick={() => adjustTabataWork(10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
@@ -602,7 +684,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3.5 rounded-3xl shadow-lg">
               <span className="text-sm font-black uppercase text-[#E32636] ml-1">Rest: {tabataRest}s</span>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() > adjustTabataRest(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
+                <button type="button" onClick={() => adjustTabataRest(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
                   <Minus className="w-5 h-5 stroke-[3]" />
                 </button>
                 <button type="button" onClick={() => adjustTabataRest(10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
