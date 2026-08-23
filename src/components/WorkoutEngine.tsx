@@ -603,7 +603,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       <div className="text-center text-base sm:text-lg font-bold text-blue-200 mb-6">
         {enginePhase === 'PREP_15' ? (
           <div className="flex items-center justify-center gap-3">
-            <span className="text-amber-300 font-black text-xl">Get In Position</span>
+            <span className={`text-amber-300 font-black ${isProjectorView ? "text-5xl sm:text-7xl md:text-[6vw]" : "text-xl"}`}>Get In Position</span>
             {!isProjectorView && (
               <button
                 type="button"
@@ -616,7 +616,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           </div>
         ) : enginePhase === 'POST_REST_90' ? (
           <div className="flex items-center justify-center gap-3">
-            <span className="text-[#E32636] font-black text-xl">Heart Rate Recovery</span>
+            <span className={`text-[#E32636] font-black ${isProjectorView ? "text-5xl sm:text-7xl md:text-[6vw]" : "text-xl"}`}>Heart Rate Recovery</span>
             {!isProjectorView && (
               <button
                 type="button"
