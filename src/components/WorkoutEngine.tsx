@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward, Activity, Flame } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
 import { RemoteSyncState } from '@/hooks/useRemoteSync';
 
@@ -10,40 +10,52 @@ interface WorkoutEngineProps {
   isProjectorView?: boolean;
 }
 
-type WorkoutMode = 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
+type WorkoutMode = 'DYNAMIC' | 'COOLDOWN' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME' | 'WARMUP';
+type DynamicSubMode = 'STRETCH' | 'RUN';
 
 export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorView = false }: WorkoutEngineProps) {
-  const [mode, setMode] = useState<WorkoutMode>('WARMUP');
+  const [mode, setMode] = useState<WorkoutMode>('DYNAMIC');
+  const [dynamicSubMode, setDynamicSubMode] = useState<DynamicSubMode>('RUN');
   const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_15' | 'RUNNING' | 'POST_REST_90' | 'FINISHED'>('IDLE');
 
-  const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
-  const [warmupPhase, setWarmupPhase] = useState<'RUN' | 'STRETCH'>('RUN');
-  const [stretchRound, setStretchRound] = useState(1);
-  const totalStretchRounds = 6;
+  // Dynamic Stretch Settings (6 rounds x 20s = 2:00)
+  const [stretchSeconds, setStretchSeconds] = useState(180);
+  const [stretchRounds, setStretchRounds] = useState(6);
+  const [currentStretchRound, setCurrentStretchRound] = useState(1);
 
-  const [tabataWork, setTabataWork] = useState(180);
+  // Warmup Run Settings (Default 3 min = 180s)
+  const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
+
+  // Tabata Settings
+  const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
 
+  // AMRAP Settings
   const [amrapTotalSeconds, setAmrapTotalSeconds] = useState(180);
 
+  // EMOM Settings
   const [emomInterval, setEmomInterval] = useState(60);
   const [emomRounds, setEmomRounds] = useState(10);
 
+  // For Time Settings
   const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(300);
 
+  // Post-Workout Rest Setting
   const [postRestSeconds, setPostRestSeconds] = useState(90);
   const [isEditingPostRest, setIsEditingPostRest] = useState(false);
   const [editPostRestInput, setEditPostRestInput] = useState('90');
 
+  // Custom edit modal
   const [isEditingCustom, setIsEditingCustom] = useState(false);
   const [editMinutes, setEditMinutes] = useState('3');
   const [editSeconds, setEditSeconds] = useState('00');
 
+  // Runtime ticker
   const [isActive, setIsActive] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
-  const [secondsRemaining, setSecondsRemaining] = useState(180);
+  const [secondsRemaining, setSecondsRemaining] = useState(20);
 
   const emit = (override: Partial<Omit<RemoteSyncState, 'timestamp'>> = {}) => {
     if (onBroadcast) {
@@ -51,10 +63,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         mode,
         isActive,
         secondsRemaining,
-        currentRound,
+        currentRound: mode === 'DYNAMIC' && dynamicSubMode === 'STRETCH' ? currentStretchRound : currentRound,
         isWorkPhase,
-        warmupPhase,
-        stretchRound,
+        dynamicSubMode,
+        stretchRound: currentStretchRound,
         ...override,
       });
     }
@@ -67,54 +79,73 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       setSecondsRemaining(incomingState.secondsRemaining);
       setCurrentRound(incomingState.currentRound);
       setIsWorkPhase(incomingState.isWorkPhase);
-      setWarmupPhase(incomingState.warmupPhase);
-      setStretchRound(incomingState.stretchRound);
+      if (incomingState.dynamicSubMode) setDynamicSubMode(incomingState.dynamicSubMode);
+      setCurrentStretchRound(incomingState.stretchRound || 1);
     }
   }, [incomingState, isProjectorView]);
 
-  const applyModeDefaults = (newMode: WorkoutMode) => {
-    setMode(newMode);
+  const applyModeDefaults = (newMode: WorkoutMode, subMode: DynamicSubMode = 'RUN') => {
+    const resolvedMode = newMode === 'WARMUP' ? 'DYNAMIC' : newMode;
+    setMode(resolvedMode);
+    setDynamicSubMode(subMode);
     setIsActive(false);
     setEnginePhase('IDLE');
     setCurrentRound(1);
+    setCurrentStretchRound(1);
     setIsWorkPhase(true);
-    setWarmupPhase('RUN');
-    setStretchRound(1);
     setIsEditingCustom(false);
     setIsEditingPostRest(false);
 
-    let sec = 180;
-    if (newMode === 'WARMUP') sec = warmupRunSeconds;
-    if (newMode === 'TABATA') sec = tabataWork;
-    if (newMode === 'AMRAP') sec = amrapTotalSeconds;
-    if (newMode === 'EMOM') sec = emomInterval;
-    if (newMode === 'FOR_TIME') sec = forTimeTotalSeconds;
+    let sec = 20;
+    if (resolvedMode === 'DYNAMIC') {
+      sec = subMode === 'STRETCH' ? stretchSeconds : warmupRunSeconds;
+    } else if (resolvedMode === 'TABATA') {
+      sec = tabataWork;
+    } else if (resolvedMode === 'AMRAP') {
+      sec = amrapTotalSeconds;
+    } else if (resolvedMode === 'EMOM') {
+      sec = emomInterval;
+    } else if (resolvedMode === 'FOR_TIME') {
+      sec = forTimeTotalSeconds;
+    }
 
     setSecondsRemaining(sec);
     emit({
-      mode: newMode,
+      mode: resolvedMode,
       isActive: false,
       secondsRemaining: sec,
       currentRound: 1,
       isWorkPhase: true,
-      warmupPhase: 'RUN',
+      dynamicSubMode: subMode,
       stretchRound: 1,
     });
   };
 
   const handleModeChange = (newMode: WorkoutMode) => {
-    applyModeDefaults(newMode);
+    applyModeDefaults(newMode, dynamicSubMode);
+  };
+
+  const handleDynamicSubModeChange = (subMode: DynamicSubMode) => {
+    if (isActive) return;
+    setDynamicSubMode(subMode);
+    applyModeDefaults('DYNAMIC', subMode);
   };
 
   const skipPrepCountdown = () => {
     soundEngine.playWorkGo();
     setEnginePhase('RUNNING');
-    let startSec = 180;
-    if (mode === 'WARMUP') startSec = warmupRunSeconds;
-    if (mode === 'TABATA') startSec = tabataWork;
-    if (mode === 'AMRAP') startSec = amrapTotalSeconds;
-    if (mode === 'EMOM') startSec = emomInterval;
-    if (mode === 'FOR_TIME') startSec = forTimeTotalSeconds;
+    let startSec = 20;
+    if (mode === 'DYNAMIC' || mode === 'WARMUP') {
+      startSec = dynamicSubMode === 'STRETCH' ? stretchSeconds : warmupRunSeconds;
+    } else if (mode === 'TABATA') {
+      startSec = tabataWork;
+    } else if (mode === 'AMRAP') {
+      startSec = amrapTotalSeconds;
+    } else if (mode === 'EMOM') {
+      startSec = emomInterval;
+    } else if (mode === 'FOR_TIME') {
+      startSec = forTimeTotalSeconds;
+    }
 
     setSecondsRemaining(startSec);
     emit({ secondsRemaining: startSec, isActive: true, currentRound: 1, isWorkPhase: true });
@@ -138,12 +169,18 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
             soundEngine.playWorkGo();
             setEnginePhase('RUNNING');
-            let startSec = 180;
-            if (mode === 'WARMUP') startSec = warmupRunSeconds;
-            if (mode === 'TABATA') startSec = tabataWork;
-            if (mode === 'AMRAP') startSec = amrapTotalSeconds;
-            if (mode === 'EMOM') startSec = emomInterval;
-            if (mode === 'FOR_TIME') startSec = forTimeTotalSeconds;
+            let startSec = 20;
+            if (mode === 'DYNAMIC' || mode === 'WARMUP') {
+              startSec = dynamicSubMode === 'STRETCH' ? stretchSeconds : warmupRunSeconds;
+            } else if (mode === 'TABATA') {
+              startSec = tabataWork;
+            } else if (mode === 'AMRAP') {
+              startSec = amrapTotalSeconds;
+            } else if (mode === 'EMOM') {
+              startSec = emomInterval;
+            } else if (mode === 'FOR_TIME') {
+              startSec = forTimeTotalSeconds;
+            }
 
             emit({ secondsRemaining: startSec, isActive: true, currentRound: 1, isWorkPhase: true });
             return startSec;
@@ -168,7 +205,46 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           return;
         }
 
-        if (mode === 'TABATA') {
+        if (mode === 'DYNAMIC' || mode === 'WARMUP') {
+          if (dynamicSubMode === 'STRETCH') {
+            setSecondsRemaining((prev) => {
+              if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+              if (prev > 1) {
+                const next = prev - 1;
+                emit({ secondsRemaining: next, isActive: true, stretchRound: currentStretchRound });
+                return next;
+              }
+
+              if (currentStretchRound < stretchRounds) {
+                soundEngine.playWorkGo();
+                const nextR = currentStretchRound + 1;
+                setCurrentStretchRound(nextR);
+                emit({ stretchRound: nextR, secondsRemaining: stretchSeconds, isActive: true });
+                return stretchSeconds;
+              } else {
+                soundEngine.playCleanupChime();
+                setEnginePhase('FINISHED');
+                setIsActive(false);
+                emit({ secondsRemaining: 0, isActive: false });
+                return 0;
+              }
+            });
+          } else {
+            // WARM-UP RUN
+            setSecondsRemaining((prev) => {
+              if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+              if (prev > 1) {
+                const next = prev - 1;
+                emit({ secondsRemaining: next, isActive: true });
+                return next;
+              }
+              soundEngine.playRest();
+              setEnginePhase('POST_REST_90');
+              emit({ secondsRemaining: postRestSeconds, isActive: true });
+              return postRestSeconds;
+            });
+          }
+        } else if (mode === 'TABATA') {
           setSecondsRemaining((prev) => {
             if (prev > 1) {
               const next = prev - 1;
@@ -189,36 +265,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 setIsWorkPhase(true);
                 emit({ isWorkPhase: true, currentRound: nextR, secondsRemaining: tabataWork, isActive: true });
                 return tabataWork;
-              } else {
-                soundEngine.playRest();
-                setEnginePhase('POST_REST_90');
-                emit({ secondsRemaining: postRestSeconds, isActive: true });
-                return postRestSeconds;
-              }
-            }
-          });
-        } else if (mode === 'WARMUP') {
-          setSecondsRemaining((prev) => {
-            if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
-            if (prev > 1) {
-              const next = prev - 1;
-              emit({ secondsRemaining: next, isActive: true });
-              return next;
-            }
-
-            if (warmupPhase === 'RUN') {
-              soundEngine.playWorkGo();
-              setWarmupPhase('STRETCH');
-              setStretchRound(1);
-              emit({ warmupPhase: 'STRETCH', stretchRound: 1, secondsRemaining: 20, isActive: true });
-              return 20;
-            } else {
-              if (stretchRound < totalStretchRounds) {
-                soundEngine.playWorkGo();
-                const nextR = stretchRound + 1;
-                setStretchRound(nextR);
-                emit({ stretchRound: nextR, secondsRemaining: 20, isActive: true });
-                return 20;
               } else {
                 soundEngine.playRest();
                 setEnginePhase('POST_REST_90');
@@ -266,7 +312,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     }
 
     return () => clearInterval(timer);
-  }, [isActive, enginePhase, mode, warmupPhase, stretchRound, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds, amrapTotalSeconds, forTimeTotalSeconds, postRestSeconds, isProjectorView]);
+  }, [isActive, enginePhase, mode, dynamicSubMode, currentStretchRound, stretchRounds, stretchSeconds, warmupRunSeconds, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds, amrapTotalSeconds, forTimeTotalSeconds, postRestSeconds, isProjectorView]);
 
   const handleToggleStartPause = () => {
     if (!isActive) {
@@ -288,16 +334,21 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setIsActive(false);
     setEnginePhase('IDLE');
     setCurrentRound(1);
+    setCurrentStretchRound(1);
     setIsWorkPhase(true);
-    setWarmupPhase('RUN');
-    setStretchRound(1);
 
-    let sec = 180;
-    if (mode === 'WARMUP') sec = warmupRunSeconds;
-    if (mode === 'TABATA') sec = tabataWork;
-    if (mode === 'AMRAP') sec = amrapTotalSeconds;
-    if (mode === 'EMOM') sec = emomInterval;
-    if (mode === 'FOR_TIME') sec = forTimeTotalSeconds;
+    let sec = 20;
+    if (mode === 'DYNAMIC' || mode === 'WARMUP') {
+      sec = dynamicSubMode === 'STRETCH' ? stretchSeconds : warmupRunSeconds;
+    } else if (mode === 'TABATA') {
+      sec = tabataWork;
+    } else if (mode === 'AMRAP') {
+      sec = amrapTotalSeconds;
+    } else if (mode === 'EMOM') {
+      sec = emomInterval;
+    } else if (mode === 'FOR_TIME') {
+      sec = forTimeTotalSeconds;
+    }
 
     setSecondsRemaining(sec);
     emit({
@@ -305,9 +356,38 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       secondsRemaining: sec,
       currentRound: 1,
       isWorkPhase: true,
-      warmupPhase: 'RUN',
+      dynamicSubMode,
       stretchRound: 1,
     });
+  };
+
+  const adjustWarmupRunSeconds = (delta: number) => {
+    if (isActive) return;
+    setWarmupRunSeconds((prev) => {
+      const next = Math.max(30, prev + delta);
+      if ((mode === 'DYNAMIC' || mode === 'WARMUP') && dynamicSubMode === 'RUN') {
+        setSecondsRemaining(next);
+        emit({ secondsRemaining: next });
+      }
+      return next;
+    });
+  };
+
+  const adjustStretchSeconds = (delta: number) => {
+    if (isActive) return;
+    setStretchSeconds((prev) => {
+      const next = Math.max(5, prev + delta);
+      if ((mode === 'DYNAMIC' || mode === 'WARMUP') && dynamicSubMode === 'STRETCH') {
+        setSecondsRemaining(next);
+        emit({ secondsRemaining: next });
+      }
+      return next;
+    });
+  };
+
+  const adjustStretchRounds = (delta: number) => {
+    if (isActive) return;
+    setStretchRounds((prev) => Math.max(1, Math.min(20, prev + delta)));
   };
 
   const adjustTabataWork = (delta: number) => {
@@ -367,18 +447,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  const adjustWarmupRunSeconds = (delta: number) => {
-    if (isActive) return;
-    setWarmupRunSeconds((prev) => {
-      const next = Math.max(30, prev + delta);
-      if (warmupPhase === 'RUN') {
-        setSecondsRemaining(next);
-        emit({ secondsRemaining: next });
-      }
-      return next;
-    });
-  };
-
   const handleSaveCustom = () => {
     const mins = Math.max(0, parseInt(editMinutes) || 0);
     const secs = Math.max(0, Math.min(59, parseInt(editSeconds) || 0));
@@ -421,20 +489,20 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     <div className={`bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-5 sm:p-8 shadow-2xl text-white backdrop-blur-md ${
       isProjectorView ? 'p-8 sm:p-12' : ''
     }`}>
-      {/* Mode Bar */}
+      {/* Top Main Mode Bar */}
       <div className="grid grid-cols-5 gap-1.5 sm:gap-3 bg-[#020b1c] p-2 rounded-2xl mb-6 border border-[#0047BA]">
-        {(['WARMUP', 'TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
+        {(['DYNAMIC', 'TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => handleModeChange(m)}
             className={`py-3 rounded-xl font-black text-xs sm:text-base tracking-wider transition truncate text-center cursor-pointer ${
-              mode === m
+              mode === m || (m === 'DYNAMIC' && mode === 'WARMUP')
                 ? 'bg-[#0047BA] text-white shadow-lg shadow-[#0047BA]/60 border border-white/30'
                 : 'text-blue-200 hover:text-white'
             }`}
           >
-            {m === 'WARMUP' ? '🔥 WARM' : m.replace('_', ' ')}
+            {m === 'DYNAMIC' ? 'DYNAMIC' : m.replace('_', ' ')}
           </button>
         ))}
       </div>
@@ -449,15 +517,17 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <span className="text-sm sm:text-lg font-black uppercase tracking-widest px-6 py-2 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50 animate-pulse">
             🛑 {postRestSeconds}s POST-WORKOUT REST
           </span>
+        ) : mode === 'DYNAMIC' || mode === 'WARMUP' ? (
+          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
+            {dynamicSubMode === 'STRETCH'
+              ? `DYNAMIC STRETCH ${currentStretchRound} OF ${stretchRounds} (${stretchSeconds}s)`
+              : `WARM-UP RUN (${formatTime(warmupRunSeconds)})`}
+          </span>
         ) : mode === 'TABATA' ? (
           <span className={`text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 ${
             isWorkPhase ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50'
           }`}>
             {isWorkPhase ? `WORK (${tabataWork}s)` : `REST (${tabataRest}s)`}
-          </span>
-        ) : mode === 'WARMUP' ? (
-          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
-            {warmupPhase === 'RUN' ? `RUN PHASE (${formatTime(warmupRunSeconds)})` : `DYNAMIC STRETCH ${stretchRound} OF 6`}
           </span>
         ) : mode === 'EMOM' ? (
           <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA]/40 text-white border-2 border-[#0047BA]">
@@ -468,13 +538,13 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             AMRAP: {formatTime(amrapTotalSeconds)}
           </span>
         ) : (
-          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA]/40 text-white border-2 border-[#0047BA]">
+          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#00 text-white border-2 border-[#0047BA]">
             FOR TIME: {formatTime(forTimeTotalSeconds)}
           </span>
         )}
       </div>
 
-      {/* Custom Time Modal */}
+      {/* Editing Custom Time Modal */}
       {isEditingCustom ? (
         <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#020b1c] p-6 rounded-3xl border-2 border-[#0047BA] shadow-2xl max-w-md mx-auto">
           <span className="text-sm uppercase font-black tracking-widest text-[#E32636]">Set Custom Duration</span>
@@ -522,7 +592,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       ) : (
         <div className={`text-center font-mono font-black tracking-tight my-3 select-none ${
-          isProjectorView ? 'text-[16vw] leading-none' : 'text-8xl sm:text-9xl'
+          isProjectorView ? 'text-[16vw] leading-none' : 'text-8xl sm:text-9xl landscape:text-[25vh]'
         } ${getTimerTextColor()}`}>
           {formatTime(secondsRemaining)}
         </div>
@@ -559,12 +629,18 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               </button>
             )}
           </div>
+        ) : mode === 'DYNAMIC' || mode === 'WARMUP' ? (
+          <span>
+            {dynamicSubMode === 'STRETCH' ? (
+              <>Stretch <span className="text-white text-2xl font-black">{currentStretchRound}</span> of {stretchRounds} (Continuous 20s)</>
+            ) : (
+              'Continuous Warm-up Run'
+            )}
+          </span>
         ) : mode === 'TABATA' ? (
           <span>Round <span className="text-white text-2xl font-black">{currentRound}</span> of {tabataRounds}</span>
         ) : mode === 'EMOM' ? (
           <span>Round <span className="text-white text-2xl font-black">{currentRound}</span> of {emomRounds}</span>
-        ) : mode === 'WARMUP' && warmupPhase === 'STRETCH' ? (
-          <span>Stretch <span className="text-white text-2xl font-black">{stretchRound}</span> of 6 (20s)</span>
         ) : null}
       </div>
 
@@ -584,6 +660,93 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <button type="button" onClick={() => setIsEditingPostRest(false)} className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300">
             <X className="w-6 h-6 stroke-[3]" />
           </button>
+        </div>
+      )}
+
+      {/* DYNAMIC CARD: BIG BUTTONS TO CHOOSE BETWEEN STRETCHES OR RUN */}
+      {!isProjectorView && (mode === 'DYNAMIC' || mode === 'WARMUP') && (
+        <div className="space-y-4 max-w-lg mx-auto mb-6">
+          {!isActive && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleDynamicSubModeChange('STRETCH')}
+                className={`flex flex-col items-center justify-center gap-1 py-4 px-2 rounded-2xl border-2 font-black transition cursor-pointer active:scale-95 shadow-lg ${
+                  dynamicSubMode === 'STRETCH'
+                    ? 'bg-emerald-600 border-emerald-400 text-white shadow-emerald-600/30'
+                    : 'bg-[#020b1c] border-[#0047BA] text-blue-300 hover:text-white'
+                }`}
+              >
+                <Activity className="w-6 h-6" />
+                <span className="text-sm uppercase tracking-wider">Dynamic Stretches</span>
+                <span className="text-[10px] opacity-80">6 × 20s (2 Min Total)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDynamicSubModeChange('RUN')}
+                className={`flex flex-col items-center justify-center gap-1 py-4 px-2 rounded-2xl border-2 font-black transition cursor-pointer active:scale-95 shadow-lg ${
+                  dynamicSubMode === 'RUN'
+                    ? 'bg-[#E32636] border-[#ff5a68] text-white shadow-[#E32636]/30'
+                    : 'bg-[#020b1c] border-[#0047BA] text-blue-300 hover:text-white'
+                }`}
+              >
+                <Flame className="w-6 h-6" />
+                <span className="text-sm uppercase tracking-wider">Warm-up Run</span>
+                <span className="text-[10px] opacity-80">{formatTime(warmupRunSeconds)} Run</span>
+              </button>
+            </div>
+          )}
+
+          {/* Steppers based on chosen Dynamic Sub-Mode */}
+          {!isActive && dynamicSubMode === 'STRETCH' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3 rounded-2xl shadow-lg">
+                <span className="text-sm font-black uppercase text-blue-300 ml-1">Stretch Time: {stretchSeconds}s</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => adjustStretchSeconds(-5)} className="p-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white transition active:scale-95">
+                    <Minus className="w-4 h-4 stroke-[3]" />
+                  </button>
+                  <button type="button" onClick={() => adjustStretchSeconds(5)} className="p-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white transition active:scale-95">
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-4 py-3 rounded-2xl shadow-lg">
+                <span className="text-sm font-black uppercase text-white">Rounds: {stretchRounds}</span>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => adjustStretchRounds(-1)} className="px-3 py-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-black text-white transition active:scale-95">
+                    -1 Rd
+                  </button>
+                  <button type="button" onClick={() => adjustStretchRounds(1)} className="px-3 py-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-black text-white transition active:scale-95">
+                    +1 Rd
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isActive && dynamicSubMode === 'RUN' && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => adjustWarmupRunSeconds(-30)}
+                className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-2xl text-sm font-mono font-black shadow-xl transition cursor-pointer"
+              >
+                <Minus className="w-5 h-5 stroke-[3]" />
+                <span>30s Run</span>
+              </button>
+              <button
+               type="button"
+                onClick={() => adjustWarmupRunSeconds(30)}
+                className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-2xl text-sm font-mono font-black shadow-xl transition cursor-pointer"
+              >
+                <Plus className="w-5 h-5 stroke-[3]" />
+                <span>30s Run</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -733,28 +896,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           >
             <Plus className="w-6 h-6 stroke-[3]" />
             <span>30s</span>
-          </button>
-        </div>
-      )}
-
-      {/* DOUBLE-SIZED WARMUP RUN CONTROLS */}
-      {!isProjectorView && !isActive && mode === 'WARMUP' && (
-        <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto mb-6">
-          <button
-            type="button"
-            onClick={() => adjustWarmupRunSeconds(-30)}
-            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
-          >
-            <Minus className="w-6 h-6 stroke-[3]" />
-            <span>30s Run</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => adjustWarmupRunSeconds(30)}
-            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
-          >
-            <Plus className="w-6 h-6 stroke-[3]" />
-            <span>30s Run</span>
           </button>
         </div>
       )}
