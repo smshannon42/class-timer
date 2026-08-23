@@ -3,12 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 
 export interface RemoteSyncState {
-  mode: 'WARMUP' | 'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
+  mode: 'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME' | 'WARMUP';
   isActive: boolean;
   secondsRemaining: number;
   currentRound: number;
   isWorkPhase: boolean;
-  warmupPhase?: 'RUN' | 'POST_RUN_REST';
+  dynamicSubMode?: 'STRETCH' | 'RUN';
   stretchRound?: number;
   timestamp: number;
 }
@@ -89,7 +89,7 @@ export function useRemoteSync(isHost: boolean = false) {
       setIsConnecting(false);
     });
 
-    conn.on('error', (err) => {
+    conn.on('error', () => {
       setErrorMessage('Failed to connect to display PIN.');
       setIsConnecting(false);
     });
@@ -111,6 +111,7 @@ export function useRemoteSync(isHost: boolean = false) {
     isConnecting,
     errorMessage,
     remoteState,
+    incomingSync: remoteState,
     connectToHost,
     broadcastState,
   };
