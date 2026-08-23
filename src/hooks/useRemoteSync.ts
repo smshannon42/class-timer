@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 
 export interface RemoteSyncState {
-  mode: 'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME' | 'WARMUP';
+  mode: 'DYNAMIC' | 'COOLDOWN' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME' | 'WARMUP';
   isActive: boolean;
   secondsRemaining: number;
   currentRound: number;
