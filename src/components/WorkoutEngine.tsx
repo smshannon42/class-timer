@@ -538,7 +538,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         ) : mode === 'DYNAMIC' || mode === 'WARMUP' ? (
           <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
             {dynamicSubMode === 'STRETCH'
-              ? `DYNAMIC STRETCH ${currentStretchRound} OF ${stretchRounds} (${stretchSeconds}s)`
+              ? `DYNAMIC STRETCH ${((currentStretchRound - 1) % 3) + 1} (${stretchSeconds}s)`
               : `WARM-UP RUN (${formatTime(warmupRunSeconds)})`}
           </span>
         ) : mode === 'TABATA' ? (
@@ -650,7 +650,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         ) : mode === 'DYNAMIC' || mode === 'WARMUP' ? (
           <span>
             {dynamicSubMode === 'STRETCH' ? (
-              <>Stretch <span className="text-white text-2xl font-black">{currentStretchRound}</span> of {stretchRounds} (Continuous 20s)</>
+              <>Stretch <span className="text-white text-2xl font-black">{((currentStretchRound - 1) % 3) + 1}</span> (Continuous 20s)</>
             ) : (
               'Continuous Warm-up Run'
             )}

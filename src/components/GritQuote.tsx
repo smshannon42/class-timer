@@ -24,8 +24,8 @@ export default function GritQuote() {
   if (!quote) return null;
 
   return (
-    <div className="w-full text-center py-6 mt-auto">
-      <p className="text-blue-200 text-sm sm:text-base md:text-lg font-bold max-w-5xl mx-auto px-6 tracking-wide drop-shadow-md">
+    <div className="w-full text-center py-2 mb-4">
+      <p className="text-blue-300 text-sm sm:text-base md:text-lg font-medium max-w-5xl mx-auto px-6 tracking-wide">
         <span className="italic">"{quote.text}"</span>
         <span className="ml-3 font-black text-white/90 whitespace-nowrap">— {quote.author}</span>
       </p>

@@ -11,6 +11,7 @@ export default function DisplayPage() {
 
   return (
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-6 lg:p-10 select-none">
+      <div className="absolute top-6 left-8 font-black text-[#0047BA] tracking-widest text-2xl sm:text-4xl uppercase opacity-70 z-50">Allen Tempo Pulse</div>
       <div className="flex items-center justify-between bg-[#001f5c]/80 border-2 border-[#0047BA] px-6 py-4 rounded-3xl shadow-2xl">
         <MustangWordmark />
 
