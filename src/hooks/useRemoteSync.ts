@@ -3,12 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 
 export interface RemoteSyncState {
-  mode: 'WARMUP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
+  mode: 'WARMUP' | 'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME';
   isActive: boolean;
   secondsRemaining: number;
   currentRound: number;
   isWorkPhase: boolean;
-  warmupPhase?: 'RUN' | 'POST_RUN_REST' | 'WAITING_FOR_STRETCH' | 'STRETCH' | 'REST';
+  warmupPhase?: 'RUN' | 'POST_RUN_REST';
   stretchRound?: number;
   timestamp: number;
 }
