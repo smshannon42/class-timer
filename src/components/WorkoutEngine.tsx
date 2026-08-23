@@ -79,6 +79,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       setSecondsRemaining(incomingState.secondsRemaining);
       setCurrentRound(incomingState.currentRound);
       setIsWorkPhase(incomingState.isWorkPhase);
+      if (incomingState.enginePhase) setEnginePhase(incomingState.enginePhase);
       if (incomingState.dynamicSubMode) setDynamicSubMode(incomingState.dynamicSubMode);
       setCurrentStretchRound(incomingState.stretchRound || 1);
     }
