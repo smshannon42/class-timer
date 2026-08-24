@@ -516,7 +516,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             {m === 'DYNAMIC' ? 'DYNAMIC' : m.replace('_', ' ')}
           </button>
         ))}
-        <YouTubeAudioController isWorkPhase={isWorkPhase} isPlaying={isActive} />
+        <YouTubeAudioController isWorkPhase={isWorkPhase} isPlaying={isActive} isStretchMode={mode === "DYNAMIC" && dynamicSubMode === "STRETCH"} />
   </div>
 
       {/* Dynamic Status Indicator */}

@@ -3,16 +3,16 @@ import React, { useEffect, useRef, useState } from 'react';
 interface YouTubeAudioControllerProps {
   isWorkPhase: boolean;
   isPlaying: boolean;
+  isStretchMode?: boolean;
 }
 
-export const YouTubeAudioController: React.FC<YouTubeAudioControllerProps> = ({ isWorkPhase, isPlaying }) => {
+export const YouTubeAudioController: React.FC<YouTubeAudioControllerProps> = ({ isWorkPhase, isPlaying, isStretchMode }) => {
   const playerRef = useRef<any>(null);
   const [overrideMode, setOverrideMode] = useState<'AUTO' | 'MUTE' | 'FULL' | 'OFF'>('AUTO');
-  const [videoId, setVideoId] = useState<string>('dQw4w9WgXcQ'); // Default high-energy track/mix ID
+  const [videoId, setVideoId] = useState<string>('dQw4w9WgXcQ');
   const [customInput, setCustomInput] = useState<string>('');
 
   useEffect(() => {
-    // Load YouTube IFrame API script if not present
     if (!(window as any).YT) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
@@ -42,7 +42,7 @@ export const YouTubeAudioController: React.FC<YouTubeAudioControllerProps> = ({ 
         events: {
           onReady: (event: any) => {
             event.target.setVolume(80);
-            if (isPlaying) event.target.playVideo();
+            if (isPlaying && !isStretchMode) event.target.playVideo();
           },
         },
       });
@@ -51,15 +51,18 @@ export const YouTubeAudioController: React.FC<YouTubeAudioControllerProps> = ({ 
     }
   };
 
-  // Handle Ducking & State Changes
   useEffect(() => {
     if (!playerRef.current || typeof playerRef.current.setVolume !== 'function') return;
 
-    if (overrideMode === 'OFF' || !isPlaying) {
-      playerRef.current.pauseVideo();
+    if (overrideMode === 'OFF' || !isPlaying || isStretchMode) {
+      if (typeof playerRef.current.pauseVideo === 'function') {
+        playerRef.current.pauseVideo();
+      }
       return;
     } else {
-      playerRef.current.playVideo();
+      if (typeof playerRef.current.playVideo === 'function') {
+        playerRef.current.playVideo();
+      }
     }
 
     if (overrideMode === 'MUTE') {
@@ -72,13 +75,12 @@ export const YouTubeAudioController: React.FC<YouTubeAudioControllerProps> = ({ 
       return;
     }
 
-    // AUTO Ducking logic based on work vs rest phase
     if (isWorkPhase) {
-      playerRef.current.setVolume(90); // Surge volume during work
+      playerRef.current.setVolume(90);
     } else {
-      playerRef.current.setVolume(15); // Duck volume low during rest
+      playerRef.current.setVolume(15);
     }
-  }, [isWorkPhase, isPlaying, overrideMode]);
+  }, [isWorkPhase, isPlaying, overrideMode, isStretchMode]);
 
   return (
     <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-white shadow-lg flex flex-col gap-3">
