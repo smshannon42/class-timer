@@ -22,7 +22,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-[#020b1c] text-white min-h-screen antialiased overflow-x-hidden">
         {children}
-            </body>
+      </body>
     </html>
   );
 }

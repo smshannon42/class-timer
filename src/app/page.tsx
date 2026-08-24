@@ -9,7 +9,6 @@ import { soundEngine } from '@/utils/audio';
 import { useRemoteSync } from '@/hooks/useRemoteSync';
 
 export default function Home() {
-  const [isDimmed, setIsDimmed] = useState(false);
   const [manualPeriodId, setManualPeriodId] = useState<string>('AUTO');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -43,13 +42,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen w-full bg-[#020b1c] text-white flex flex-col justify-between p-3 sm:p-5 select-none">
-      {isDimmed && (
-        <div className="fixed inset-0 bg-black/95 z-[9999] flex flex-col items-center justify-center transition-opacity duration-1000 cursor-pointer">
-          <span className="text-white/40 tracking-[0.5em] uppercase font-black text-2xl mb-4 animate-pulse">Tap to Wake</span>
-          <span className="text-[#0047BA] text-sm font-bold uppercase tracking-widest">Timers running via Radio Link</span>
-        </div>
-      )}
-
       <div className="max-w-5xl mx-auto w-full space-y-4">
         
         {/* Top Header Bar with ATP Vector Branding */}
