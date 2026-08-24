@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward, Activity, Flame } from 'lucide-react';
-import { YouTubeAudioController } from './YouTubeAudioController';
 import { soundEngine } from '@/utils/audio';
 import { RemoteSyncState } from '@/hooks/useRemoteSync';
 
@@ -516,7 +515,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             {m === 'DYNAMIC' ? 'DYNAMIC' : m.replace('_', ' ')}
           </button>
         ))}
-        <YouTubeAudioController isWorkPhase={isWorkPhase} isPlaying={isActive} isStretchMode={mode === "DYNAMIC" && dynamicSubMode === "STRETCH"} />
   </div>
 
       {/* Dynamic Status Indicator */}
