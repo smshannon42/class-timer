@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, Play, Pause, Radio, Shuffle } from 'lucide-react';
+import { Volume2, VolumeX, Play, Pause, Radio, Shuffle, SkipForward } from 'lucide-react';
 
 interface BackgroundAudioProps {
   isPlaying: boolean;
@@ -39,10 +39,11 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
   const shouldPlay = isPlaying && isWorkPhase && !isStretchMode && !isPreCountdown && !isPostRest && !isUserPaused && !isMuted;
 
-  // Stable embed URL that doesn't reset on interval changes (removed autoplay boolean from key)
-  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&shuffle=1`;
+  // Adding index=randomized and shuffle=1 so every page refresh starts on a totally different randomized track
+  const randomStartIndex = typeof window !== 'undefined' ? Math.floor(Math.random() * 20) : 0;
+  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&shuffle=1&index=${randomStartIndex}`;
 
-  // Control playback via YouTube API postMessage commands without reloading the iframe
+  // Control playback via YouTube API postMessage commands
   useEffect(() => {
     if (!iframeRef.current || !iframeRef.current.contentWindow) return;
 
@@ -64,6 +65,15 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
     );
   }, [volume, isMuted]);
 
+  // Handle Next Track skipping
+  const handleNextTrack = () => {
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify({ event: 'command', func: 'nextVideo', args: [] }),
+      '*'
+    );
+  };
+
   const handleLoadPlaylist = (input: string) => {
     let cleanId = input.trim();
     if (cleanId.includes('list=')) {
@@ -79,7 +89,6 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
   return (
     <div className="w-full bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between text-white shadow-md gap-3">
-      {/* Permanently mounted iframe container so it NEVER reloads or resets position on round changes */}
       <div className="hidden">
         <iframe
           ref={iframeRef}
@@ -142,6 +151,15 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
           title={isUserPaused ? "Resume Stream" : "Pause Stream"}
         >
           {isUserPaused ? <Play className="w-4 h-4 fill-black" /> : <Pause className="w-4 h-4 fill-black" />}
+        </button>
+
+        {/* Skip to Next Track Button */}
+        <button
+          onClick={handleNextTrack}
+          className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-300 hover:text-white transition"
+          title="Skip to Next Track"
+        >
+          <SkipForward className="w-4 h-4" />
         </button>
 
         <div className="h-4 w-[1px] bg-neutral-800" />
