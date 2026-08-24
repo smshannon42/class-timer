@@ -1,4 +1,28 @@
 'use client';
+const playEmomRoundBell = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      // Boxing bell frequency pitch
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.5);
+      
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.8);
+    } catch (e) {
+      console.warn('Audio cue error:', e);
+    }
+  };
+
 import { BackgroundAudio } from './BackgroundAudio';
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward, Activity, Flame } from 'lucide-react';
