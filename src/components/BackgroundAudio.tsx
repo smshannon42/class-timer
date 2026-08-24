@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, VolumeX, Play, Pause, Radio, Shuffle } from 'lucide-react';
 
 interface BackgroundAudioProps {
@@ -16,7 +16,6 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
   isPreCountdown,
   isPostRest 
 }) => {
-  // Default to your custom playlist ID
   const defaultPlaylistId = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
   
   const [playlistId, setPlaylistId] = useState<string>(() => {
@@ -32,14 +31,38 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(80);
 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
   useEffect(() => {
     localStorage.setItem('workout_playlist_id', playlistId);
   }, [playlistId]);
 
   const shouldPlay = isPlaying && isWorkPhase && !isStretchMode && !isPreCountdown && !isPostRest && !isUserPaused && !isMuted;
 
-  // Added shuffle=1 parameter so the playlist mixes tracks randomly on load
-  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&autoplay=${shouldPlay ? 1 : 0}&shuffle=1`;
+  // Stable embed URL that doesn't reset on interval changes (removed autoplay boolean from key)
+  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&shuffle=1`;
+
+  // Control playback via YouTube API postMessage commands without reloading the iframe
+  useEffect(() => {
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+
+    const command = shouldPlay ? 'playVideo' : 'pauseVideo';
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify({ event: 'command', func: command, args: [] }),
+      '*'
+    );
+  }, [shouldPlay]);
+
+  // Handle volume updates dynamically
+  useEffect(() => {
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+
+    const targetVol = isMuted ? 0 : volume;
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify({ event: 'command', func: 'setVolume', args: [targetVol] }),
+      '*'
+    );
+  }, [volume, isMuted]);
 
   const handleLoadPlaylist = (input: string) => {
     let cleanId = input.trim();
@@ -56,9 +79,11 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
   return (
     <div className="w-full bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between text-white shadow-md gap-3">
+      {/* Permanently mounted iframe container so it NEVER reloads or resets position on round changes */}
       <div className="hidden">
         <iframe
-          key={`${playlistId}-${shouldPlay}`}
+          ref={iframeRef}
+          key={playlistId}
           src={embedUrl}
           allow="autoplay"
           title="Workout Playlist Stream"
