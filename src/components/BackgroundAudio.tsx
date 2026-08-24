@@ -39,25 +39,27 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
   const shouldPlay = isPlaying && isWorkPhase && !isStretchMode && !isPreCountdown && !isPostRest && !isUserPaused && !isMuted;
 
-  // Adding index=randomized and shuffle=1 so every page refresh starts on a totally different randomized track
-  const randomStartIndex = typeof window !== 'undefined' ? Math.floor(Math.random() * 20) : 0;
-  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&shuffle=1&index=${randomStartIndex}`;
+  // Clean embed URL supporting shuffle and random start index
+  const randomStartIndex = typeof window !== 'undefined' ? Math.floor(Math.random() * 15) : 0;
+  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&autoplay=1&shuffle=1&index=${randomStartIndex}`;
 
-  // Control playback via YouTube API postMessage commands
+  // Sync play/pause state via postMessage safely
   useEffect(() => {
-    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+    const timer = setTimeout(() => {
+      if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+      const command = shouldPlay ? 'playVideo' : 'pauseVideo';
+      iframeRef.current.contentWindow.postMessage(
+        JSON.stringify({ event: 'command', func: command, args: [] }),
+        '*'
+      );
+    }, 500); // Small delay to ensure iframe is ready
 
-    const command = shouldPlay ? 'playVideo' : 'pauseVideo';
-    iframeRef.current.contentWindow.postMessage(
-      JSON.stringify({ event: 'command', func: command, args: [] }),
-      '*'
-    );
-  }, [shouldPlay]);
+    return () => clearTimeout(timer);
+  }, [shouldPlay, playlistId]);
 
   // Handle volume updates dynamically
   useEffect(() => {
     if (!iframeRef.current || !iframeRef.current.contentWindow) return;
-
     const targetVol = isMuted ? 0 : volume;
     iframeRef.current.contentWindow.postMessage(
       JSON.stringify({ event: 'command', func: 'setVolume', args: [targetVol] }),
@@ -89,12 +91,13 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
   return (
     <div className="w-full bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between text-white shadow-md gap-3">
+      {/* Visible or active iframe container allowed to stream audio properly */}
       <div className="hidden">
         <iframe
           ref={iframeRef}
           key={playlistId}
           src={embedUrl}
-          allow="autoplay"
+          allow="autoplay; encrypted-media"
           title="Workout Playlist Stream"
         />
       </div>
