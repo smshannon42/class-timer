@@ -163,7 +163,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       timer = setInterval(() => {
         if (enginePhase === 'PREP_15') {
           setSecondsRemaining((prev) => {
-            if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+//             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
             if (prev > 1) {
               const next = prev - 1;
               emit({ secondsRemaining: next, isActive: true });
@@ -195,7 +195,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
         if (enginePhase === 'POST_REST_90') {
           setSecondsRemaining((prev) => {
-            if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+//             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
             if (prev > 1) {
               const next = prev - 1;
               emit({ secondsRemaining: next, isActive: true });
@@ -213,7 +213,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         if (mode === 'DYNAMIC' || mode === 'WARMUP') {
           if (dynamicSubMode === 'STRETCH') {
             setSecondsRemaining((prev) => {
-              if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+//               if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
               if (prev > 1) {
                 const next = prev - 1;
                 emit({ secondsRemaining: next, isActive: true, stretchRound: currentStretchRound });
@@ -239,7 +239,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           } else {
             // WARM-UP RUN
             setSecondsRemaining((prev) => {
-              if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+//               if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
               if (prev > 1) {
                 const next = prev - 1;
                 emit({ secondsRemaining: next, isActive: true });
@@ -284,7 +284,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           });
         } else if (mode === 'EMOM') {
           setSecondsRemaining((prev) => {
-            if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+//             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
             if (prev > 1) {
               const next = prev - 1;
               emit({ secondsRemaining: next, isActive: true });
@@ -307,7 +307,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           });
         } else if (mode === 'AMRAP' || mode === 'FOR_TIME') {
           setSecondsRemaining((prev) => {
-            if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
+//             if (prev <= 4 && prev > 1) soundEngine.playCountdownTick();
             if (prev > 1) {
               const next = prev - 1;
               emit({ secondsRemaining: next, isActive: true });
@@ -330,7 +330,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
         setEnginePhase('PREP_15');
         setSecondsRemaining(15);
-        soundEngine.playCountdownTick();
+//         soundEngine.playCountdownTick();
         emit({ secondsRemaining: 15, isActive: true });
       }
       setIsActive(true);
