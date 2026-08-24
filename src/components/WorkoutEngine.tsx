@@ -1,4 +1,5 @@
 'use client';
+import { BackgroundAudio } from './BackgroundAudio';
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward, Activity, Flame } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
@@ -496,6 +497,8 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   return (
+    <>
+      <BackgroundAudio isPlaying={isActive} isWorkPhase={isWorkPhase} isStretchMode={mode === "DYNAMIC" && dynamicSubMode === "STRETCH"} isPreCountdown={enginePhase === "PREP_15"} />
     <div className={`bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-5 sm:p-8 shadow-2xl text-white backdrop-blur-md ${
       isProjectorView ? 'p-8 sm:p-12' : ''
     }`}>
@@ -930,5 +933,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
     </div>
+    </>
   );
 }
