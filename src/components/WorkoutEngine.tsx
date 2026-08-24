@@ -25,7 +25,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [currentStretchRound, setCurrentStretchRound] = useState(1);
 
   // Warmup Run Settings (Default 3 min = 180s)
-  const [warmupRunSeconds, setWarmupRunSeconds] = useState(20);
+  const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
 
   // Tabata Settings
   const [tabataWork, setTabataWork] = useState(20);
@@ -133,7 +133,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   const skipPrepCountdown = () => {
-    soundEngine.playWorkGo();
+    if (secondsRemaining === 3) {
+      soundEngine.playWorkGo();
+    }
     setEnginePhase('RUNNING');
     let startSec = 20;
     if (mode === 'DYNAMIC' || mode === 'WARMUP') {
@@ -168,7 +170,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               return next;
             }
 
-            soundEngine.playWorkGo();
+            if (secondsRemaining === 3) {
+      soundEngine.playWorkGo();
+    }
             setEnginePhase('RUNNING');
             let startSec = 20;
             if (mode === 'DYNAMIC' || mode === 'WARMUP') {
@@ -217,7 +221,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               }
 
               if (currentStretchRound < stretchRounds) {
-                soundEngine.playWorkGo();
+                if (secondsRemaining === 3) {
+      soundEngine.playWorkGo();
+    }
                 const nextR = currentStretchRound + 1;
                 setCurrentStretchRound(nextR);
                 emit({ stretchRound: nextR, secondsRemaining: stretchSeconds, isActive: true });
@@ -260,7 +266,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               return tabataRest;
             } else {
               if (currentRound < tabataRounds) {
-                soundEngine.playWorkGo();
+                if (secondsRemaining === 3) {
+      soundEngine.playWorkGo();
+    }
                 const nextR = currentRound + 1;
                 setCurrentRound(nextR);
                 setIsWorkPhase(true);
@@ -283,7 +291,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               return next;
             }
             if (currentRound < emomRounds) {
-              soundEngine.playWorkGo();
+              if (secondsRemaining === 3) {
+      soundEngine.playWorkGo();
+    }
               const nextR = currentRound + 1;
               setCurrentRound(nextR);
               emit({ currentRound: nextR, secondsRemaining: emomInterval, isActive: true });
