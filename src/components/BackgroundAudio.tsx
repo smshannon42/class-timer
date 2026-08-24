@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Volume2, VolumeX, Play, Pause, Radio } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Volume2, VolumeX, Play, Pause, Radio, Shuffle } from 'lucide-react';
 
 interface BackgroundAudioProps {
   isPlaying: boolean;
@@ -16,21 +16,46 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
   isPreCountdown,
   isPostRest 
 }) => {
-  const [playlistId, setPlaylistId] = useState<string>('wfklPGkuTY4');
+  // Default to your custom playlist ID
+  const defaultPlaylistId = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
+  
+  const [playlistId, setPlaylistId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('workout_playlist_id') || defaultPlaylistId;
+    }
+    return defaultPlaylistId;
+  });
+
   const [isEditingPlaylist, setIsEditingPlaylist] = useState<boolean>(false);
   const [playlistInput, setPlaylistInput] = useState<string>('');
   const [isUserPaused, setIsUserPaused] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(80);
 
+  useEffect(() => {
+    localStorage.setItem('workout_playlist_id', playlistId);
+  }, [playlistId]);
+
   const shouldPlay = isPlaying && isWorkPhase && !isStretchMode && !isPreCountdown && !isPostRest && !isUserPaused && !isMuted;
 
-  // Construct the clean embed URL supporting playlist IDs
-  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&autoplay=${shouldPlay ? 1 : 0}&volume=${volume}`;
+  // Added shuffle=1 parameter so the playlist mixes tracks randomly on load
+  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&autoplay=${shouldPlay ? 1 : 0}&shuffle=1`;
+
+  const handleLoadPlaylist = (input: string) => {
+    let cleanId = input.trim();
+    if (cleanId.includes('list=')) {
+      cleanId = cleanId.split('list=')[1]?.split('&')[0] || cleanId;
+    }
+    if (cleanId) {
+      setPlaylistId(cleanId);
+      setIsEditingPlaylist(false);
+      setPlaylistInput('');
+      setIsUserPaused(false);
+    }
+  };
 
   return (
     <div className="w-full bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between text-white shadow-md gap-3">
-      {/* Headless/Subtle iframe embedding for bulletproof playlist streaming */}
       <div className="hidden">
         <iframe
           key={`${playlistId}-${shouldPlay}`}
@@ -48,16 +73,18 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold tracking-wide uppercase">Custom Workout Playlist</h2>
+              <h2 className="text-sm font-bold tracking-wide uppercase flex items-center gap-1.5">
+                Shuffle DJ Deck <Shuffle className="w-3.5 h-3.5 text-cyan-400" />
+              </h2>
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${shouldPlay ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-neutral-800 text-neutral-400'}`}>
-                {shouldPlay ? 'LIVE' : 'MUTED / REST'}
+                {shouldPlay ? 'SHUFFLING LIVE' : 'PAUSED / REST'}
               </span>
             </div>
             <button 
               onClick={() => setIsEditingPlaylist(!isEditingPlaylist)}
               className="text-xs text-cyan-400 hover:underline text-left mt-0.5 block"
             >
-              {isEditingPlaylist ? 'Close Setup' : '⚙️ Change Playlist ID'}
+              {isEditingPlaylist ? 'Close Setup' : '⚙️ Change Playlist'}
             </button>
           </div>
         </div>
@@ -68,27 +95,16 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
         <div className="flex items-center gap-2 bg-neutral-950 p-2 rounded-xl border border-neutral-800 w-full md:w-auto">
           <input
             type="text"
-            placeholder="Paste Playlist ID (e.g. PL... or URL)"
+            placeholder="Paste YouTube Playlist URL..."
             value={playlistInput}
             onChange={(e) => setPlaylistInput(e.target.value)}
             className="bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white flex-1 focus:outline-none focus:border-cyan-500"
           />
           <button
-            onClick={() => {
-              let cleanId = playlistInput.trim();
-              if (cleanId.includes('list=')) {
-                cleanId = cleanId.split('list=')[1]?.split('&')[0] || cleanId;
-              }
-              if (cleanId) {
-                setPlaylistId(cleanId);
-                setIsEditingPlaylist(false);
-                setPlaylistInput('');
-                setIsUserPaused(false);
-              }
-            }}
+            onClick={() => handleLoadPlaylist(playlistInput)}
             className="bg-cyan-600 hover:bg-cyan-500 text-black font-bold px-3 py-1.5 rounded-lg text-xs transition"
           >
-            Load & Play
+            Load & Shuffle
           </button>
         </div>
       )}
