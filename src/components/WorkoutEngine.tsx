@@ -99,7 +99,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     let sec = 20;
     if (resolvedMode === 'DYNAMIC') {
-      sec = subMode === 'STRETCH' ? stretchSeconds : warmupRunSeconds;
+      sec = dynamicSubMode === 'STRETCH' ? stretchSeconds : warmupRunSeconds;
     } else if (resolvedMode === 'TABATA') {
       sec = tabataWork;
     } else if (resolvedMode === 'AMRAP') {
@@ -327,7 +327,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       }, 1000);
     }
 
-    return () => clearInterval(timer);
+  
+      useEffect(() => {
+        if (mode === 'DYNAMIC' && enginePhase === 'IDLE') {
+          setSecondsRemaining(dynamicSubMode === 'STRETCH' ? 20 : 180);
+        }
+      }, [mode, dynamicSubMode, enginePhase]);
+    
+  return () => clearInterval(timer);
   }, [isActive, enginePhase, mode, dynamicSubMode, currentStretchRound, stretchRounds, stretchSeconds, warmupRunSeconds, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds, amrapTotalSeconds, forTimeTotalSeconds, postRestSeconds, isProjectorView]);
 
   const handleToggleStartPause = () => {
