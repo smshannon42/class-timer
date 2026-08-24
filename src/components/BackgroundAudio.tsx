@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Music, Volume2, VolumeX, Play, Pause, SkipForward, Radio } from 'lucide-react';
+import { Volume2, VolumeX, Play, Pause, SkipForward, Radio } from 'lucide-react';
 
 interface BackgroundAudioProps {
   isPlaying: boolean;
@@ -27,6 +27,7 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
   const [volume, setVolume] = useState<number>(80);
 
   useEffect(() => {
+    // Load YouTube API script if missing
     if (!(window as any).YT) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
@@ -34,18 +35,18 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
       (window as any).onYouTubeIframeAPIReady = () => {
-        initPlayer(playlistId);
+        createPlayer(playlistId);
       };
     } else if ((window as any).YT && (window as any).YT.Player) {
-      initPlayer(playlistId);
+      createPlayer(playlistId);
     }
   }, [playlistId]);
 
-  const initPlayer = (targetList: string) => {
-    if (playerRef.current && typeof playerRef.current.loadPlaylist === 'function') {
-      playerRef.current.loadPlaylist({ list: targetList, listType: 'playlist' });
-      return;
-    }
+  const createPlayer = (targetList: string) => {
+    // Clean up old player if it exists
+    const elem = document.getElementById('header-audio-player');
+    if (elem) elem.innerHTML = '';
+
     try {
       playerRef.current = new (window as any).YT.Player('header-audio-player', {
         height: '0',
@@ -55,11 +56,15 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
           loop: 1,
           listType: 'playlist',
           list: targetList,
+          controls: 0,
         },
         events: {
           onReady: (event: any) => {
             event.target.setVolume(volume);
-            event.target.loadPlaylist({ list: targetList, listType: 'playlist' });
+            // Explicitly queue and cue the playlist
+            if (typeof event.target.loadPlaylist === 'function') {
+              event.target.loadPlaylist({ list: targetList, listType: 'playlist' });
+            }
           },
         },
       });
@@ -74,7 +79,11 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
     if (!playerRef.current || typeof playerRef.current.playVideo !== 'function') return;
 
     if (shouldPlay && !isMuted) {
-      playerRef.current.playVideo();
+      try {
+        playerRef.current.playVideo();
+      } catch (e) {
+        console.warn('Autoplay restricted:', e);
+      }
     } else {
       if (typeof playerRef.current.pauseVideo === 'function') {
         playerRef.current.pauseVideo();
@@ -112,7 +121,8 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
   return (
     <div className="w-full bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between text-white shadow-md gap-3">
-      <div id="header-audio-player" className="hidden"></div>
+      {/* Container element for YouTube IFrame API */}
+      <div id="header-audio-player"></div>
 
       {/* Left: Branding & Playlist Config */}
       <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
