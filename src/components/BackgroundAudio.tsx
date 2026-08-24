@@ -37,25 +37,23 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
     localStorage.setItem('workout_playlist_id', playlistId);
   }, [playlistId]);
 
+  // STRICT RULE: Only play when clock is active, in work phase, not resting/stretching/pre-countdown, and not paused by user.
   const shouldPlay = isPlaying && isWorkPhase && !isStretchMode && !isPreCountdown && !isPostRest && !isUserPaused && !isMuted;
 
-  // Clean embed URL supporting shuffle and random start index
-  const randomStartIndex = typeof window !== 'undefined' ? Math.floor(Math.random() * 15) : 0;
-  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&autoplay=1&shuffle=1&index=${randomStartIndex}`;
+  // Randomized starting index on load for fresh shuffle each refresh, autoplay=0 to prevent choppy background audio loops
+  const randomStartIndex = typeof window !== 'undefined' ? Math.floor(Math.random() * 20) : 0;
+  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&autoplay=0&shuffle=1&index=${randomStartIndex}`;
 
-  // Sync play/pause state via postMessage safely
+  // Control playback strictly via postMessage based on `shouldPlay`
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!iframeRef.current || !iframeRef.current.contentWindow) return;
-      const command = shouldPlay ? 'playVideo' : 'pauseVideo';
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({ event: 'command', func: command, args: [] }),
-        '*'
-      );
-    }, 500); // Small delay to ensure iframe is ready
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
 
-    return () => clearTimeout(timer);
-  }, [shouldPlay, playlistId]);
+    const command = shouldPlay ? 'playVideo' : 'pauseVideo';
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify({ event: 'command', func: command, args: [] }),
+      '*'
+    );
+  }, [shouldPlay]);
 
   // Handle volume updates dynamically
   useEffect(() => {
@@ -91,7 +89,7 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
   return (
     <div className="w-full bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between text-white shadow-md gap-3">
-      {/* Visible or active iframe container allowed to stream audio properly */}
+      {/* Headless iframe stream container */}
       <div className="hidden">
         <iframe
           ref={iframeRef}
