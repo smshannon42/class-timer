@@ -18,7 +18,6 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 }) => {
   const playerRef = useRef<any>(null);
   
-  // REPLACE THIS with your public YouTube Playlist ID (e.g., from the URL after ?list=)
   const [playlistId, setPlaylistId] = useState<string>('wfklPGkuTY4');
   const [isEditingPlaylist, setIsEditingPlaylist] = useState<boolean>(false);
   const [playlistInput, setPlaylistInput] = useState<string>('');
@@ -35,18 +34,16 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
       firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
       (window as any).onYouTubeIframeAPIReady = () => {
-        initPlayer();
+        initPlayer(playlistId);
       };
     } else if ((window as any).YT && (window as any).YT.Player) {
-      initPlayer();
+      initPlayer(playlistId);
     }
   }, [playlistId]);
 
-  const initPlayer = () => {
-    if (playerRef.current) {
-      if (typeof playerRef.current.loadPlaylist === 'function') {
-        playerRef.current.loadPlaylist({ list: playlistId, listType: 'playlist' });
-      }
+  const initPlayer = (targetList: string) => {
+    if (playerRef.current && typeof playerRef.current.loadPlaylist === 'function') {
+      playerRef.current.loadPlaylist({ list: targetList, listType: 'playlist' });
       return;
     }
     try {
@@ -54,14 +51,15 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
         height: '0',
         width: '0',
         playerVars: {
-          autoplay: 0,
+          autoplay: 1,
           loop: 1,
           listType: 'playlist',
-          list: playlistId,
+          list: targetList,
         },
         events: {
           onReady: (event: any) => {
             event.target.setVolume(volume);
+            event.target.loadPlaylist({ list: targetList, listType: 'playlist' });
           },
         },
       });
@@ -133,18 +131,18 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
               onClick={() => setIsEditingPlaylist(!isEditingPlaylist)}
               className="text-xs text-cyan-400 hover:underline text-left mt-0.5 block"
             >
-              {isEditingPlaylist ? 'Close Playlist Setup' : '⚙️ Change Playlist ID'}
+              {isEditingPlaylist ? 'Close Setup' : '⚙️ Change Playlist ID'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Playlist Input Drawer if toggled */}
+      {/* Playlist Input Drawer */}
       {isEditingPlaylist && (
         <div className="flex items-center gap-2 bg-neutral-950 p-2 rounded-xl border border-neutral-800 w-full md:w-auto">
           <input
             type="text"
-            placeholder="Paste YouTube Playlist ID or URL..."
+            placeholder="Paste Playlist ID (e.g. PL... or URL)"
             value={playlistInput}
             onChange={(e) => setPlaylistInput(e.target.value)}
             className="bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white flex-1 focus:outline-none focus:border-cyan-500"
@@ -159,18 +157,18 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
                 setPlaylistId(cleanId);
                 setIsEditingPlaylist(false);
                 setPlaylistInput('');
+                setIsUserPaused(false);
               }
             }}
             className="bg-cyan-600 hover:bg-cyan-500 text-black font-bold px-3 py-1.5 rounded-lg text-xs transition"
           >
-            Load
+            Load & Play
           </button>
         </div>
       )}
 
       {/* Right: Full Controls Bar */}
       <div className="flex items-center gap-4 bg-neutral-950/80 border border-neutral-800 px-4 py-2 rounded-2xl shadow-inner w-full md:w-auto justify-end">
-        {/* Play / Pause Toggle */}
         <button
           onClick={() => setIsUserPaused(!isUserPaused)}
           className="p-2 bg-cyan-600 hover:bg-cyan-500 text-black rounded-xl transition font-bold shadow"
@@ -179,7 +177,6 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
           {isUserPaused ? <Play className="w-4 h-4 fill-black" /> : <Pause className="w-4 h-4 fill-black" />}
         </button>
 
-        {/* Skip to Next Track */}
         <button
           onClick={handleNextTrack}
           className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-300 hover:text-white transition"
@@ -190,7 +187,6 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
 
         <div className="h-4 w-[1px] bg-neutral-800" />
 
-        {/* Mute Button */}
         <button
           onClick={toggleMute}
           className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-300 hover:text-white transition"
@@ -199,7 +195,6 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
           {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
         </button>
 
-        {/* Volume Slider */}
         <div className="flex items-center gap-2">
           <input
             type="range"
