@@ -200,7 +200,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               emit({ secondsRemaining: next, isActive: true });
               return next;
             }
-            soundEngine.playCleanupChime();
+            // removed
             setEnginePhase('FINISHED');
             setIsActive(false);
             emit({ secondsRemaining: 0, isActive: false });
@@ -228,7 +228,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 emit({ stretchRound: nextR, secondsRemaining: stretchSeconds, isActive: true });
                 return stretchSeconds;
               } else {
-                soundEngine.playCleanupChime();
+                // removed
                 setEnginePhase('FINISHED');
                 setIsActive(false);
                 emit({ secondsRemaining: 0, isActive: false });
