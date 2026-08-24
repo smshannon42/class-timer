@@ -21,7 +21,13 @@ export default function GritQuote() {
     setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   }, []);
 
-  if (!quote) return null;
+    const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+    setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+  }, []);
+
+  if (!isMounted || !quote) return null;
 
   return (
     <div className="w-full text-center py-2 mb-4">
