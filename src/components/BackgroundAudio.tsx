@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, Play, Pause, SkipForward, Radio } from 'lucide-react';
+import React, { useState } from 'react';
+import { Volume2, VolumeX, Play, Pause, Radio } from 'lucide-react';
 
 interface BackgroundAudioProps {
   isPlaying: boolean;
@@ -16,113 +16,29 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
   isPreCountdown,
   isPostRest 
 }) => {
-  const playerRef = useRef<any>(null);
-  
   const [playlistId, setPlaylistId] = useState<string>('wfklPGkuTY4');
   const [isEditingPlaylist, setIsEditingPlaylist] = useState<boolean>(false);
   const [playlistInput, setPlaylistInput] = useState<string>('');
-
   const [isUserPaused, setIsUserPaused] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(80);
 
-  useEffect(() => {
-    // Load YouTube API script if missing
-    if (!(window as any).YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+  const shouldPlay = isPlaying && isWorkPhase && !isStretchMode && !isPreCountdown && !isPostRest && !isUserPaused && !isMuted;
 
-      (window as any).onYouTubeIframeAPIReady = () => {
-        createPlayer(playlistId);
-      };
-    } else if ((window as any).YT && (window as any).YT.Player) {
-      createPlayer(playlistId);
-    }
-  }, [playlistId]);
-
-  const createPlayer = (targetList: string) => {
-    // Clean up old player if it exists
-    const elem = document.getElementById('header-audio-player');
-    if (elem) elem.innerHTML = '';
-
-    try {
-      playerRef.current = new (window as any).YT.Player('header-audio-player', {
-        height: '0',
-        width: '0',
-        playerVars: {
-          autoplay: 1,
-          loop: 1,
-          listType: 'playlist',
-          list: targetList,
-          controls: 0,
-        },
-        events: {
-          onReady: (event: any) => {
-            event.target.setVolume(volume);
-            // Explicitly queue and cue the playlist
-            if (typeof event.target.loadPlaylist === 'function') {
-              event.target.loadPlaylist({ list: targetList, listType: 'playlist' });
-            }
-          },
-        },
-      });
-    } catch (err) {
-      console.warn('Header audio init error:', err);
-    }
-  };
-
-  const shouldPlay = isPlaying && isWorkPhase && !isStretchMode && !isPreCountdown && !isPostRest && !isUserPaused;
-
-  useEffect(() => {
-    if (!playerRef.current || typeof playerRef.current.playVideo !== 'function') return;
-
-    if (shouldPlay && !isMuted) {
-      try {
-        playerRef.current.playVideo();
-      } catch (e) {
-        console.warn('Autoplay restricted:', e);
-      }
-    } else {
-      if (typeof playerRef.current.pauseVideo === 'function') {
-        playerRef.current.pauseVideo();
-      }
-    }
-  }, [shouldPlay, isMuted]);
-
-  const handleNextTrack = () => {
-    if (playerRef.current && typeof playerRef.current.nextVideo === 'function') {
-      playerRef.current.nextVideo();
-    }
-  };
-
-  const handleVolumeChange = (newVol: number) => {
-    setVolume(newVol);
-    if (playerRef.current && typeof playerRef.current.setVolume === 'function') {
-      playerRef.current.setVolume(newVol);
-    }
-    if (newVol > 0 && isMuted) {
-      setIsMuted(false);
-      playerRef.current?.unMute();
-    }
-  };
-
-  const toggleMute = () => {
-    if (!playerRef.current) return;
-    if (isMuted) {
-      playerRef.current.unMute();
-      setIsMuted(false);
-    } else {
-      playerRef.current.mute();
-      setIsMuted(true);
-    }
-  };
+  // Construct the clean embed URL supporting playlist IDs
+  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&autoplay=${shouldPlay ? 1 : 0}&volume=${volume}`;
 
   return (
     <div className="w-full bg-neutral-900 border-b border-neutral-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between text-white shadow-md gap-3">
-      {/* Container element for YouTube IFrame API */}
-      <div id="header-audio-player"></div>
+      {/* Headless/Subtle iframe embedding for bulletproof playlist streaming */}
+      <div className="hidden">
+        <iframe
+          key={`${playlistId}-${shouldPlay}`}
+          src={embedUrl}
+          allow="autoplay"
+          title="Workout Playlist Stream"
+        />
+      </div>
 
       {/* Left: Branding & Playlist Config */}
       <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
@@ -187,18 +103,10 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
           {isUserPaused ? <Play className="w-4 h-4 fill-black" /> : <Pause className="w-4 h-4 fill-black" />}
         </button>
 
-        <button
-          onClick={handleNextTrack}
-          className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-300 hover:text-white transition"
-          title="Next Track in Playlist"
-        >
-          <SkipForward className="w-4 h-4" />
-        </button>
-
         <div className="h-4 w-[1px] bg-neutral-800" />
 
         <button
-          onClick={toggleMute}
+          onClick={() => setIsMuted(!isMuted)}
           className="p-2 hover:bg-neutral-800 rounded-xl text-neutral-300 hover:text-white transition"
           title={isMuted ? "Unmute" : "Mute"}
         >
@@ -211,7 +119,7 @@ export const BackgroundAudio: React.FC<BackgroundAudioProps> = ({
             min="0"
             max="100"
             value={isMuted ? 0 : volume}
-            onChange={(e) => handleVolumeChange(Number(e.target.value))}
+            onChange={(e) => setVolume(Number(e.target.value))}
             className="w-20 md:w-24 accent-cyan-500 bg-neutral-800 h-1.5 rounded-lg cursor-pointer"
           />
           <span className="text-xs text-neutral-400 w-8 text-right">{isMuted ? '0%' : `${volume}%`}</span>
