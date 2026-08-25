@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward, Flame, Activity } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
-import BackgroundAudio from './BackgroundAudio';
+import { BackgroundAudio } from './BackgroundAudio';
 
 interface WorkoutEngineProps {
   onBroadcast?: (state: any) => void;
