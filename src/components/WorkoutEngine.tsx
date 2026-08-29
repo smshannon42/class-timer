@@ -6,10 +6,11 @@ import { BackgroundAudio } from './BackgroundAudio';
 
 interface WorkoutEngineProps {
   onBroadcast?: (state: any) => void;
+  incomingState?: any;
   isProjectorView?: boolean;
 }
 
-export default function WorkoutEngine({ onBroadcast, isProjectorView = false }: WorkoutEngineProps) {
+export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorView = false }: WorkoutEngineProps) {
   const [mode, setMode] = useState<'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME'>('DYNAMIC');
   const [dynamicSubMode, setDynamicSubMode] = useState<'RUN' | 'STRETCH'>('RUN');
   
@@ -117,6 +118,22 @@ export default function WorkoutEngine({ onBroadcast, isProjectorView = false }: 
   };
 
   useEffect(() => {
+    if (isProjectorView && incomingState) {
+      setMode(incomingState.mode);
+      setDynamicSubMode(incomingState.dynamicSubMode);
+      setSecondsRemaining(incomingState.secondsRemaining);
+      setIsActive(incomingState.isActive);
+      setEnginePhase(incomingState.enginePhase);
+      setCurrentRound(incomingState.currentRound);
+      setIsWorkPhase(incomingState.isWorkPhase);
+      setCurrentStretchRound(incomingState.currentStretchRound);
+      setStretchRounds(incomingState.stretchRounds);
+      setStretchSeconds(incomingState.stretchSeconds);
+      setWarmupRunSeconds(incomingState.warmupRunSeconds);
+      setPostRestSeconds(incomingState.postRestSeconds);
+      return;
+    }
+
     if (isProjectorView) return;
 
     let timer: NodeJS.Timeout;
