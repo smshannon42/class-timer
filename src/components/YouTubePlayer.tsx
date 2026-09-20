@@ -19,7 +19,7 @@ const GYM_PLAYLIST_ID = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
 export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   const [isReady, setIsReady] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [currentTitle, setCurrentTitle] = useState<string>('Loading track...');
+  const [currentTitle, setCurrentTitle] = useState<string>('Ready to play');
   const playerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -38,33 +38,31 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
           controls: 0,
           modestbranding: 1,
           rel: 0,
-          loop: 1,
+          playsinline: 1,
         },
         events: {
           onReady: (event: any) => {
+            setIsReady(true);
             try {
               event.target.setShuffle(true);
               event.target.setLoop(true);
-
-              const playlist = event.target.getPlaylist();
-              const playlistLength = Array.isArray(playlist) ? playlist.length : 20;
-              const randomIndex = Math.floor(Math.random() * Math.max(playlistLength, 1));
-
-              event.target.cuePlaylist({
-                list: GYM_PLAYLIST_ID,
-                listType: 'playlist',
-                index: randomIndex,
-              });
             } catch (err) {
-              console.warn('Playlist shuffle init warning:', err);
+              console.warn('YT shuffle error:', err);
             }
-            setIsReady(true);
           },
           onStateChange: (event: any) => {
-            if (event.data === window.YT?.PlayerState?.PLAYING || event.data === window.YT?.PlayerState?.CUED) {
+            try {
               const videoData = event.target.getVideoData();
-              setCurrentTitle(videoData?.title || 'Gym Playlist Track');
+              if (videoData && videoData.title) {
+                setCurrentTitle(videoData.title);
+              }
+            } catch (err) {
+              console.warn('Error reading track title:', err);
             }
+          },
+          onError: (err: any) => {
+            console.error('YouTube player error:', err);
+            setCurrentTitle('Tap to start or skip track');
           },
         },
       });
@@ -98,7 +96,7 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
         playerRef.current.pauseVideo();
       }
     } catch (err) {
-      console.warn('YT play/pause sync error:', err);
+      console.warn('YT sync error:', err);
     }
   }, [isPlaying, isReady]);
 
@@ -117,11 +115,6 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   const handleNextSong = () => {
     if (playerRef.current?.nextVideo) {
       playerRef.current.nextVideo();
-      if (!isPlaying) {
-        setTimeout(() => {
-          playerRef.current?.pauseVideo();
-        }, 150);
-      }
     }
   };
 
@@ -136,13 +129,11 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
       {/* Audio Deck Controls */}
       <div className="flex items-center justify-between bg-neutral-950 border border-neutral-800 rounded-xl p-3.5">
         <div className="flex items-center gap-3 overflow-hidden mr-3">
-          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 text-cyan-400">
-            {isMuted ? (
-              <VolumeX size={18} className="text-neutral-500" />
-            ) : (
-              <Volume2 size={18} className={isPlaying ? 'animate-pulse' : 'opacity-40'} />
-            )}
+          {/* Active Thumbnail: Gives YouTube an active, non-throttled visual surface without taking over the screen */}
+          <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-neutral-800 bg-neutral-900 relative">
+            <div id="yt-player-target" className="w-full h-full object-cover scale-150 pointer-events-none" />
           </div>
+
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-semibold text-white truncate">{currentTitle}</span>
             <span className="text-[10px] text-neutral-500">Auto-synced to timer intervals</span>
@@ -175,11 +166,6 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
             <span>Skip</span>
           </button>
         </div>
-      </div>
-
-      {/* Hidden YouTube IFrame */}
-      <div className="absolute -left-[9999px] -top-[9999px] w-[1px] h-[1px] overflow-hidden pointer-events-none opacity-0">
-        <div id="yt-player-target" />
       </div>
     </div>
   );
