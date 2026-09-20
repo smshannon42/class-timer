@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, FastForward, Timer } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
+import YouTubePlayer from './YouTubePlayer';
 
 interface WorkoutEngineProps {
   onBroadcast?: (state: any) => void;
@@ -14,7 +15,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [mode, setMode] = useState<'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME'>('DYNAMIC');
   const [dynamicSubMode, setDynamicSubMode] = useState<'RUN' | 'STRETCH'>('RUN');
 
-  // Prep Countdown Toggle (Default false: instant start)
   const [enablePrep, setEnablePrep] = useState<boolean>(false);
 
   const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
@@ -39,6 +39,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [isActive, setIsActive] = useState(false);
   const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_5' | 'RUNNING' | 'POST_REST_60' | 'FINISHED'>('IDLE');
 
+  // Music condition: Timer must be active, running, and NOT in rest or prep
+  const isMusicPlaying = isActive && enginePhase === 'RUNNING' && (mode !== 'TABATA' || isWorkPhase);
+
   const emit = (overrides = {}) => {
     if (!onBroadcast || isProjectorView) return;
     onBroadcast({
@@ -62,6 +65,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       amrapDuration,
       forTimeCap,
       enablePrep,
+      isMusicPlaying,
       ...overrides
     });
   };
@@ -224,7 +228,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   useEffect(() => {
     emit();
-  }, [mode, dynamicSubMode, secondsRemaining, isActive, enginePhase, currentRound, isWorkPhase, currentStretchRound, enablePrep]);
+  }, [mode, dynamicSubMode, secondsRemaining, isActive, enginePhase, currentRound, isWorkPhase, currentStretchRound, enablePrep, isMusicPlaying]);
 
   const handleStart = () => {
     if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
@@ -358,7 +362,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             ))}
           </div>
 
-          {/* Prep Toggle Button */}
           <button
             onClick={() => setEnablePrep(!enablePrep)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
@@ -403,28 +406,33 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       </div>
 
       {!isProjectorView && (
-        <div className="flex items-center gap-4 mt-8">
-          <button
-            onClick={isActive ? handlePause : handleStart}
-            className={`p-6 rounded-3xl font-black flex items-center gap-2 transition-all shadow-xl ${
-              isActive ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950' : 'bg-cyan-500 hover:bg-cyan-400 text-neutral-950'
-            }`}
-          >
-            {isActive ? <Pause size={32} /> : <Play size={32} />}
-          </button>
-          <button
-            onClick={handleReset}
-            className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
-          >
-            <RotateCcw size={32} />
-          </button>
-          <button
-            onClick={handleSkip}
-            className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
-          >
-            <FastForward size={32} />
-          </button>
-        </div>
+        <>
+          <div className="flex items-center gap-4 mt-4">
+            <button
+              onClick={isActive ? handlePause : handleStart}
+              className={`p-6 rounded-3xl font-black flex items-center gap-2 transition-all shadow-xl ${
+                isActive ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950' : 'bg-cyan-500 hover:bg-cyan-400 text-neutral-950'
+              }`}
+            >
+              {isActive ? <Pause size={32} /> : <Play size={32} />}
+            </button>
+            <button
+              onClick={handleReset}
+              className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
+            >
+              <RotateCcw size={32} />
+            </button>
+            <button
+              onClick={handleSkip}
+              className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
+            >
+              <FastForward size={32} />
+            </button>
+          </div>
+
+          {/* Connected YouTube Playlist */}
+          <YouTubePlayer isPlaying={isMusicPlaying} />
+        </>
       )}
     </div>
   );
