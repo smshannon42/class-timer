@@ -14,8 +14,8 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [manualPlay, setManualPlay] = useState(false);
 
-  // Send standard YouTube postMessage commands to iframe
-  const postYTCommand = (func: string, args: any[] = []) => {
+  // Send YouTube postMessage API commands
+  const sendCommand = (func: string, args: any[] = []) => {
     if (!iframeRef.current?.contentWindow) return;
     iframeRef.current.contentWindow.postMessage(
       JSON.stringify({
@@ -27,56 +27,44 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
     );
   };
 
-  // Sync Timer workout play/pause to the YouTube iframe
+  // Sync Timer workout play/pause to YouTube
   useEffect(() => {
     if (isPlaying) {
-      postYTCommand('playVideo');
+      sendCommand('playVideo');
       setManualPlay(true);
     } else {
-      postYTCommand('pauseVideo');
+      sendCommand('pauseVideo');
       setManualPlay(false);
     }
   }, [isPlaying]);
 
   const togglePlay = () => {
     if (manualPlay) {
-      postYTCommand('pauseVideo');
+      sendCommand('pauseVideo');
       setManualPlay(false);
     } else {
-      postYTCommand('playVideo');
+      sendCommand('playVideo');
       setManualPlay(true);
     }
   };
 
   const toggleMute = () => {
     if (isMuted) {
-      postYTCommand('unMute');
+      sendCommand('unMute');
       setIsMuted(false);
     } else {
-      postYTCommand('mute');
+      sendCommand('mute');
       setIsMuted(true);
     }
   };
 
   const handleNext = () => {
-    postYTCommand('nextVideo');
+    sendCommand('nextVideo');
   };
 
   return (
-    <div className="flex items-center gap-2 mt-2 max-w-xl">
-      {/* Standard Embed Video Viewport (120x80) - Guaranteed to bypass Chrome zero-size/invisible throttling */}
-      <div className="w-24 h-16 rounded-lg overflow-hidden border border-neutral-800 bg-neutral-950 shrink-0 shadow-md">
-        <iframe
-          ref={iframeRef}
-          className="w-full h-full"
-          src={`https://www.youtube-nocookie.com/embed?listType=playlist&list=${PLAYLIST_ID}&enablejsapi=1&playsinline=1&modestbranding=1&rel=0`}
-          title="Gym Playlist"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-        />
-      </div>
-
-      {/* Blue Pill Control Bar */}
+    <div className="flex items-center justify-center mt-2">
+      {/* Blue Pill Control Bar Only (Video Completely Hidden from View) */}
       <div className="flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-sm backdrop-blur-sm">
         {/* Play/Pause Toggle */}
         <button
@@ -114,6 +102,28 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
           <SkipForward size={13} />
           <span className="text-[11px] uppercase tracking-wider">Skip</span>
         </button>
+      </div>
+
+      {/* Hidden iframe rendering off-screen so Chrome processes audio stream without visual output */}
+      <div
+        style={{
+          position: 'fixed',
+          top: -9999,
+          left: -9999,
+          width: '200px',
+          height: '200px',
+          pointerEvents: 'none',
+          visibility: 'hidden',
+        }}
+      >
+        <iframe
+          ref={iframeRef}
+          width="200"
+          height="200"
+          src={`https://www.youtube.com/embed?listType=playlist&list=${PLAYLIST_ID}&enablejsapi=1&playsinline=1&modestbranding=1&rel=0`}
+          title="Workout Audio Engine"
+          allow="autoplay; encrypted-media"
+        />
       </div>
     </div>
   );
