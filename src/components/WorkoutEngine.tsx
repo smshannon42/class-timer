@@ -23,17 +23,21 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [currentStretchRound, setCurrentStretchRound] = useState(1);
   const [postRestSeconds, setPostRestSeconds] = useState(60);
 
-  // Tabata Work (5s - 180s, default 20s) & Rest (0s - 60s, default 10s)
+  // Tabata (default 20s work / 10s rest)
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
 
+  // EMOM (default 60s, +/- 5s)
   const [emomInterval, setEmomInterval] = useState(60);
   const [emomRounds, setEmomRounds] = useState(10);
 
-  const [amrapDuration, setAmrapDuration] = useState(600);
+  // AMRAP (default 5m = 300s, +/- 30s)
+  const [amrapDuration, setAmrapDuration] = useState(300);
+
+  // FOR TIME (default 10m = 600s, +/- 30s)
   const [forTimeCap, setForTimeCap] = useState(600);
 
   const [secondsRemaining, setSecondsRemaining] = useState(180);
@@ -87,6 +91,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       setTabataWork(incomingState.tabataWork ?? 20);
       setTabataRest(incomingState.tabataRest ?? 10);
       setTabataRounds(incomingState.tabataRounds ?? 8);
+      setEmomInterval(incomingState.emomInterval ?? 60);
+      setEmomRounds(incomingState.emomRounds ?? 10);
+      setAmrapDuration(incomingState.amrapDuration ?? 300);
+      setForTimeCap(incomingState.forTimeCap ?? 600);
       setEnablePrep(incomingState.enablePrep ?? false);
       return;
     }
@@ -152,7 +160,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             if (prev > 1) return prev - 1;
             if (isWorkPhase) {
               if (tabataRest === 0) {
-                // If 0s rest, skip rest phase directly to next round
                 if (currentRound < tabataRounds) {
                   soundEngine.playWorkGo();
                   setCurrentRound((r) => r + 1);
@@ -245,7 +252,23 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   useEffect(() => {
     emit();
-  }, [mode, dynamicSubMode, secondsRemaining, isActive, enginePhase, currentRound, isWorkPhase, currentStretchRound, enablePrep, isMusicPlaying, tabataWork, tabataRest]);
+  }, [
+    mode,
+    dynamicSubMode,
+    secondsRemaining,
+    isActive,
+    enginePhase,
+    currentRound,
+    isWorkPhase,
+    currentStretchRound,
+    enablePrep,
+    isMusicPlaying,
+    tabataWork,
+    tabataRest,
+    emomInterval,
+    amrapDuration,
+    forTimeCap
+  ]);
 
   const handleStart = () => {
     if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
@@ -339,19 +362,36 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     }
   };
 
-  // Work bounds: 5s to 180s (3 min)
+  // Tabata Steppers
   const adjustTabataWork = (delta: number) => {
     const nextVal = Math.min(180, Math.max(5, tabataWork + delta));
     setTabataWork(nextVal);
-    if (mode === 'TABATA' && enginePhase === 'IDLE') {
-      setSecondsRemaining(nextVal);
-    }
+    if (mode === 'TABATA' && enginePhase === 'IDLE') setSecondsRemaining(nextVal);
   };
 
-  // Rest bounds: 0s to 60s
   const adjustTabataRest = (delta: number) => {
     const nextVal = Math.min(60, Math.max(0, tabataRest + delta));
     setTabataRest(nextVal);
+  };
+
+  // EMOM Stepper (15s to 180s in 5s increments)
+  const adjustEmom = (delta: number) => {
+    const nextVal = Math.min(180, Math.max(15, emomInterval + delta));
+    setEmomInterval(nextVal);
+    if (mode === 'EMOM' && enginePhase === 'IDLE') setSecondsRemaining(nextVal);
+  };
+
+  // AMRAP Stepper (60s to 1800s [30m] in 30s increments)
+  const adjustAmrap = (delta: number) => {
+    const nextVal = Math.min(1800, Math.max(60, amrapDuration + delta));
+    setAmrapDuration(nextVal);
+    if (mode === 'AMRAP' && enginePhase === 'IDLE') setSecondsRemaining(nextVal);
+  };
+
+  // For Time Cap Stepper (60s to 3600s [60m] in 30s increments)
+  const adjustForTime = (delta: number) => {
+    const nextVal = Math.min(3600, Math.max(60, forTimeCap + delta));
+    setForTimeCap(nextVal);
   };
 
   const formatDisplayTime = (secs: number) => {
@@ -371,7 +411,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   return (
     <div className={`flex flex-col items-center justify-center w-full ${isProjectorView ? 'min-h-[85vh]' : ''}`}>
       {!isProjectorView && (
-        <div className="flex flex-col items-center gap-3 mb-6">
+        <div className="flex flex-col items-center gap-3 mb-4">
           <div className="flex flex-wrap gap-2 bg-neutral-900/80 p-2 rounded-2xl border border-neutral-800">
             {(['DYNAMIC', 'TABATA', 'EMOM', 'AMRAP', 'FOR_TIME'] as const).map((m) => (
               <button
@@ -414,26 +454,22 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             <span>Prep Countdown (5s): <strong className="uppercase">{enablePrep ? 'ON' : 'OFF'}</strong></span>
           </button>
 
-          {/* Tabata Work & Rest Scroll Steppers */}
+          {/* TABATA Scroll Controls */}
           {mode === 'TABATA' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md mt-1">
-              {/* Work Interval (5s to 3m) */}
               <div className="bg-neutral-900/90 border border-emerald-500/30 rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Work (5s - 3m)</span>
                   <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataWork)}</span>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => adjustTabataWork(-5)}
                     className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
-                    title="Minus 5 seconds"
                   >
                     <Minus size={14} />
                   </button>
-
                   <input
                     type="range"
                     min="5"
@@ -447,35 +483,29 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                     }}
                     className="w-full accent-emerald-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
                   />
-
                   <button
                     type="button"
                     onClick={() => adjustTabataWork(5)}
                     className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
-                    title="Plus 5 seconds"
                   >
                     <Plus size={14} />
                   </button>
                 </div>
               </div>
 
-              {/* Rest Interval (0s to 60s) */}
               <div className="bg-neutral-900/90 border border-amber-500/30 rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Rest (0 - 60s)</span>
                   <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataRest)}</span>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => adjustTabataRest(-5)}
                     className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
-                    title="Minus 5 seconds"
                   >
                     <Minus size={14} />
                   </button>
-
                   <input
                     type="range"
                     min="0"
@@ -485,12 +515,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                     onChange={(e) => setTabataRest(Number(e.target.value))}
                     className="w-full accent-amber-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
                   />
-
                   <button
                     type="button"
                     onClick={() => adjustTabataRest(5)}
                     className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
-                    title="Plus 5 seconds"
                   >
                     <Plus size={14} />
                   </button>
@@ -498,10 +526,127 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               </div>
             </div>
           )}
+
+          {/* EMOM Scroll Control (Default 60s, +/- 5s) */}
+          {mode === 'EMOM' && (
+            <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Interval (±5s)</span>
+                <span className="text-base font-black text-white font-mono">{formatIntervalLabel(emomInterval)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => adjustEmom(-5)}
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
+                >
+                  <Minus size={14} />
+                </button>
+                <input
+                  type="range"
+                  min="15"
+                  max="180"
+                  step="5"
+                  value={emomInterval}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setEmomInterval(val);
+                    if (enginePhase === 'IDLE') setSecondsRemaining(val);
+                  }}
+                  className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={() => adjustEmom(5)}
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* AMRAP Scroll Control (Default 5m, +/- 30s) */}
+          {mode === 'AMRAP' && (
+            <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-fuchsia-500/30 rounded-2xl p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-fuchsia-400 uppercase tracking-wider">Target Duration (±30s)</span>
+                <span className="text-base font-black text-white font-mono">{formatIntervalLabel(amrapDuration)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => adjustAmrap(-30)}
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
+                >
+                  <Minus size={14} />
+                </button>
+                <input
+                  type="range"
+                  min="60"
+                  max="1800"
+                  step="30"
+                  value={amrapDuration}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setAmrapDuration(val);
+                    if (enginePhase === 'IDLE') setSecondsRemaining(val);
+                  }}
+                  className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={() => adjustAmrap(30)}
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* FOR TIME Scroll Control (Default 10m cap, +/- 30s) */}
+          {mode === 'FOR_TIME' && (
+            <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-indigo-500/30 rounded-2xl p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Time Cap (±30s)</span>
+                <span className="text-base font-black text-white font-mono">{formatIntervalLabel(forTimeCap)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => adjustForTime(-30)}
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
+                >
+                  <Minus size={14} />
+                </button>
+                <input
+                  type="range"
+                  min="60"
+                  max="3600"
+                  step="30"
+                  value={forTimeCap}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setForTimeCap(val);
+                  }}
+                  className="w-full accent-indigo-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                />
+                <button
+                  type="button"
+                  onClick={() => adjustForTime(30)}
+                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <div className="flex items-center gap-3 mb-4">
+      {/* Active Phase Pill */}
+      <div className="flex items-center gap-3">
         {mode === 'DYNAMIC' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
             {enginePhase === 'PREP_5'
@@ -520,9 +665,28 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             {enginePhase === 'PREP_5' ? 'PREP (5s)' : isWorkPhase ? `WORK - ROUND ${currentRound}/${tabataRounds}` : `REST - ROUND ${currentRound}/${tabataRounds}`}
           </span>
         )}
+        {mode === 'EMOM' && (
+          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            {enginePhase === 'PREP_5' ? 'PREP (5s)' : `ROUND ${currentRound}/${emomRounds}`}
+          </span>
+        )}
+        {mode === 'AMRAP' && (
+          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
+            {enginePhase === 'PREP_5' ? 'PREP (5s)' : `AMRAP - ${formatIntervalLabel(amrapDuration)}`}
+          </span>
+        )}
+        {mode === 'FOR_TIME' && (
+          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            {enginePhase === 'PREP_5' ? 'PREP (5s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
+          </span>
+        )}
       </div>
 
-      <div className="relative flex items-center justify-center my-6">
+      {/* Audio Deck Blue Pill */}
+      {!isProjectorView && <YouTubePlayer isPlaying={isMusicPlaying} />}
+
+      {/* Main Countdown Display */}
+      <div className="relative flex items-center justify-center my-4">
         <div className={`font-black tracking-tighter select-none font-mono ${
           isProjectorView ? 'text-[14rem] md:text-[20rem]' : 'text-8xl md:text-[11rem]'
         } ${enginePhase === 'PREP_5' ? 'text-amber-400 animate-pulse' : 'text-white drop-shadow-2xl'}`}>
@@ -530,34 +694,30 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       </div>
 
+      {/* Controller Buttons */}
       {!isProjectorView && (
-        <>
-          <div className="flex items-center gap-4 mt-4">
-            <button
-              onClick={isActive ? handlePause : handleStart}
-              className={`p-6 rounded-3xl font-black flex items-center gap-2 transition-all shadow-xl ${
-                isActive ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950' : 'bg-cyan-500 hover:bg-cyan-400 text-neutral-950'
-              }`}
-            >
-              {isActive ? <Pause size={32} /> : <Play size={32} />}
-            </button>
-            <button
-              onClick={handleReset}
-              className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
-            >
-              <RotateCcw size={32} />
-            </button>
-            <button
-              onClick={handleSkip}
-              className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
-            >
-              <FastForward size={32} />
-            </button>
-          </div>
-
-          {/* YouTube Audio Deck */}
-          <YouTubePlayer isPlaying={isMusicPlaying} />
-        </>
+        <div className="flex items-center gap-4 mt-2">
+          <button
+            onClick={isActive ? handlePause : handleStart}
+            className={`p-6 rounded-3xl font-black flex items-center gap-2 transition-all shadow-xl ${
+              isActive ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950' : 'bg-cyan-500 hover:bg-cyan-400 text-neutral-950'
+            }`}
+          >
+            {isActive ? <Pause size={32} /> : <Play size={32} />}
+          </button>
+          <button
+            onClick={handleReset}
+            className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
+          >
+            <RotateCcw size={32} />
+          </button>
+          <button
+            onClick={handleSkip}
+            className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
+          >
+            <FastForward size={32} />
+          </button>
+        </div>
       )}
     </div>
   );
