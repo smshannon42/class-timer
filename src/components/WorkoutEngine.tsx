@@ -23,7 +23,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [currentStretchRound, setCurrentStretchRound] = useState(1);
   const [postRestSeconds, setPostRestSeconds] = useState(60);
 
-  // Tabata State with 20s/10s Defaults
+  // Tabata Work (5s - 180s, default 20s) & Rest (0s - 60s, default 10s)
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
@@ -151,9 +151,23 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           setSecondsRemaining((prev) => {
             if (prev > 1) return prev - 1;
             if (isWorkPhase) {
-              soundEngine.playRest();
-              setIsWorkPhase(false);
-              return tabataRest;
+              if (tabataRest === 0) {
+                // If 0s rest, skip rest phase directly to next round
+                if (currentRound < tabataRounds) {
+                  soundEngine.playWorkGo();
+                  setCurrentRound((r) => r + 1);
+                  return tabataWork;
+                } else {
+                  soundEngine.playRest();
+                  setEnginePhase('FINISHED');
+                  setIsActive(false);
+                  return 0;
+                }
+              } else {
+                soundEngine.playRest();
+                setIsWorkPhase(false);
+                return tabataRest;
+              }
             } else {
               if (currentRound < tabataRounds) {
                 soundEngine.playWorkGo();
@@ -325,16 +339,18 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     }
   };
 
+  // Work bounds: 5s to 180s (3 min)
   const adjustTabataWork = (delta: number) => {
-    const nextVal = Math.max(5, tabataWork + delta);
+    const nextVal = Math.min(180, Math.max(5, tabataWork + delta));
     setTabataWork(nextVal);
     if (mode === 'TABATA' && enginePhase === 'IDLE') {
       setSecondsRemaining(nextVal);
     }
   };
 
+  // Rest bounds: 0s to 60s
   const adjustTabataRest = (delta: number) => {
-    const nextVal = Math.max(5, tabataRest + delta);
+    const nextVal = Math.min(60, Math.max(0, tabataRest + delta));
     setTabataRest(nextVal);
   };
 
@@ -342,6 +358,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const formatIntervalLabel = (secs: number) => {
+    if (secs === 0) return '0s (None)';
+    if (secs < 60) return `${secs}s`;
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return s === 0 ? `${m}m` : `${m}m ${s}s`;
   };
 
   return (
@@ -390,14 +414,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             <span>Prep Countdown (5s): <strong className="uppercase">{enablePrep ? 'ON' : 'OFF'}</strong></span>
           </button>
 
-          {/* Tabata Work & Rest Rotary Pickers */}
+          {/* Tabata Work & Rest Scroll Steppers */}
           {mode === 'TABATA' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md mt-1">
-              {/* Work Interval Wheel */}
+              {/* Work Interval (5s to 3m) */}
               <div className="bg-neutral-900/90 border border-emerald-500/30 rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Work Interval</span>
-                  <span className="text-lg font-black text-white font-mono">{tabataWork}s</span>
+                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Work (5s - 3m)</span>
+                  <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataWork)}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -413,7 +437,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <input
                     type="range"
                     min="5"
-                    max="90"
+                    max="180"
                     step="5"
                     value={tabataWork}
                     onChange={(e) => {
@@ -435,11 +459,11 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                 </div>
               </div>
 
-              {/* Rest Interval Wheel */}
+              {/* Rest Interval (0s to 60s) */}
               <div className="bg-neutral-900/90 border border-amber-500/30 rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Rest Interval</span>
-                  <span className="text-lg font-black text-white font-mono">{tabataRest}s</span>
+                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Rest (0 - 60s)</span>
+                  <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataRest)}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -454,7 +478,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
                   <input
                     type="range"
-                    min="5"
+                    min="0"
                     max="60"
                     step="5"
                     value={tabataRest}
