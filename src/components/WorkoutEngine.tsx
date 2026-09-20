@@ -1,8 +1,8 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Plus, Minus, Edit3, Check, X, FastForward, Flame, Activity } from 'lucide-react';
+import { Play, Pause, RotateCcw, FastForward, Timer } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
-import { BackgroundAudio } from './BackgroundAudio';
 
 interface WorkoutEngineProps {
   onBroadcast?: (state: any) => void;
@@ -13,108 +13,57 @@ interface WorkoutEngineProps {
 export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorView = false }: WorkoutEngineProps) {
   const [mode, setMode] = useState<'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME'>('DYNAMIC');
   const [dynamicSubMode, setDynamicSubMode] = useState<'RUN' | 'STRETCH'>('RUN');
-  
-  // Timers & Configurations
-  const [warmupRunSeconds, setWarmupRunSeconds] = useState(180); // 3 minutes default
+
+  // Prep Countdown Toggle (Default false: instant start)
+  const [enablePrep, setEnablePrep] = useState<boolean>(false);
+
+  const [warmupRunSeconds, setWarmupRunSeconds] = useState(180);
   const [stretchSeconds, setStretchSeconds] = useState(20);
   const [stretchRounds, setStretchRounds] = useState(6);
   const [currentStretchRound, setCurrentStretchRound] = useState(1);
+  const [postRestSeconds, setPostRestSeconds] = useState(60);
 
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
-
-  const [amrapTotalSeconds, setAmrapTotalSeconds] = useState(600); // 10 mins
-  const [emomInterval, setEmomInterval] = useState(60);
-  const [emomRounds, setEmomRounds] = useState(10);
-  const [forTimeTotalSeconds, setForTimeTotalSeconds] = useState(600);
-
-  const [postRestSeconds, setPostRestSeconds] = useState(90); // 90 second rest
-
-  const [secondsRemaining, setSecondsRemaining] = useState(180);
-  const [isActive, setIsActive] = useState(false);
-  const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_15' | 'RUNNING' | 'POST_REST_90' | 'FINISHED'>('IDLE');
-  
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
 
-  // Modal editing states
-  const [isEditingCustom, setIsEditingCustom] = useState(false);
-  const [editMinutes, setEditMinutes] = useState('10');
-  const [editSeconds, setEditSeconds] = useState('00');
-  const [isEditingPostRest, setIsEditingPostRest] = useState(false);
-  const [editPostRestInput, setEditPostRestInput] = useState('90');
+  const [emomInterval, setEmomInterval] = useState(60);
+  const [emomRounds, setEmomRounds] = useState(10);
 
-  const emit = (newState: Record<string, any>) => {
-    if (onBroadcast) {
-      onBroadcast({
-        mode,
-        dynamicSubMode,
-        secondsRemaining,
-        isActive,
-        enginePhase,
-        currentRound,
-        isWorkPhase,
-        currentStretchRound,
-        stretchRounds,
-        stretchSeconds,
-        warmupRunSeconds,
-        postRestSeconds,
-        ...newState,
-      });
-    }
-  };
+  const [amrapDuration, setAmrapDuration] = useState(600);
+  const [forTimeCap, setForTimeCap] = useState(600);
 
-  const handleModeChange = (newMode: 'DYNAMIC' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME') => {
-    if (isActive) return;
-    setMode(newMode);
-    setEnginePhase('IDLE');
-    setCurrentRound(1);
-    setCurrentStretchRound(1);
-    setIsWorkPhase(true);
+  const [secondsRemaining, setSecondsRemaining] = useState(180);
+  const [isActive, setIsActive] = useState(false);
+  const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_5' | 'RUNNING' | 'POST_REST_60' | 'FINISHED'>('IDLE');
 
-    let startSec = 180;
-    if (newMode === 'DYNAMIC') {
-      startSec = dynamicSubMode === 'RUN' ? warmupRunSeconds : stretchSeconds;
-    } else if (newMode === 'TABATA') {
-      startSec = tabataWork;
-    } else if (newMode === 'AMRAP') {
-      startSec = amrapTotalSeconds;
-    } else if (newMode === 'EMOM') {
-      startSec = emomInterval;
-    } else if (newMode === 'FOR_TIME') {
-      startSec = forTimeTotalSeconds;
-    }
-
-    setSecondsRemaining(startSec);
-    emit({ secondsRemaining: startSec, isActive: false, mode: newMode });
-  };
-
-  const handleDynamicSubModeChange = (sub: 'RUN' | 'STRETCH') => {
-    if (isActive) return;
-    setDynamicSubMode(sub);
-    const startSec = sub === 'RUN' ? warmupRunSeconds : stretchSeconds;
-    setSecondsRemaining(startSec);
-    emit({ dynamicSubMode: sub, secondsRemaining: startSec });
-  };
-
-  const skipPrepCountdown = () => {
-    setEnginePhase('RUNNING');
-    let startSec = warmupRunSeconds;
-    if (mode === 'DYNAMIC') {
-      startSec = dynamicSubMode === 'RUN' ? warmupRunSeconds : stretchSeconds;
-    } else if (mode === 'TABATA') {
-      startSec = tabataWork;
-    } else if (mode === 'AMRAP') {
-      startSec = amrapTotalSeconds;
-    } else if (mode === 'EMOM') {
-      startSec = emomInterval;
-    } else if (mode === 'FOR_TIME') {
-      startSec = forTimeTotalSeconds;
-    }
-
-    setSecondsRemaining(startSec);
-    emit({ secondsRemaining: startSec, isActive: true, currentRound: 1, isWorkPhase: true });
+  const emit = (overrides = {}) => {
+    if (!onBroadcast || isProjectorView) return;
+    onBroadcast({
+      mode,
+      dynamicSubMode,
+      secondsRemaining,
+      isActive,
+      enginePhase,
+      currentRound,
+      isWorkPhase,
+      currentStretchRound,
+      stretchRounds,
+      stretchSeconds,
+      warmupRunSeconds,
+      postRestSeconds,
+      tabataWork,
+      tabataRest,
+      tabataRounds,
+      emomInterval,
+      emomRounds,
+      amrapDuration,
+      forTimeCap,
+      enablePrep,
+      ...overrides
+    });
   };
 
   useEffect(() => {
@@ -131,6 +80,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       setStretchSeconds(incomingState.stretchSeconds);
       setWarmupRunSeconds(incomingState.warmupRunSeconds);
       setPostRestSeconds(incomingState.postRestSeconds);
+      setEnablePrep(incomingState.enablePrep ?? false);
       return;
     }
 
@@ -140,49 +90,28 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     if (isActive) {
       timer = setInterval(() => {
-        if (enginePhase === 'PREP_15') {
+        if (enginePhase === 'PREP_5') {
           setSecondsRemaining((prev) => {
-            if (prev > 1) {
-              const next = prev - 1;
-              emit({ secondsRemaining: next, isActive: true });
-              return next;
-            }
-
+            if (prev > 1) return prev - 1;
             soundEngine.playWorkGo();
             setEnginePhase('RUNNING');
-            let startSec = warmupRunSeconds;
-            if (mode === 'DYNAMIC') {
-              startSec = dynamicSubMode === 'RUN' ? warmupRunSeconds : stretchSeconds;
-            } else if (mode === 'TABATA') {
-              startSec = tabataWork;
-            } else if (mode === 'AMRAP') {
-              startSec = amrapTotalSeconds;
-            } else if (mode === 'EMOM') {
-              startSec = emomInterval;
-            } else if (mode === 'FOR_TIME') {
-              startSec = forTimeTotalSeconds;
-            }
-
-            emit({ secondsRemaining: startSec, isActive: true, currentRound: 1, isWorkPhase: true });
-            return startSec;
+            if (mode === 'DYNAMIC') return dynamicSubMode === 'RUN' ? warmupRunSeconds : stretchSeconds;
+            if (mode === 'TABATA') return tabataWork;
+            if (mode === 'EMOM') return emomInterval;
+            if (mode === 'AMRAP') return amrapDuration;
+            if (mode === 'FOR_TIME') return 0;
+            return 0;
           });
           return;
         }
 
-        // 90-Second Rest Phase -> Automatically transitions into Dynamic Stretches
-        if (enginePhase === 'POST_REST_90') {
+        if (enginePhase === 'POST_REST_60') {
           setSecondsRemaining((prev) => {
-            if (prev > 1) {
-              const next = prev - 1;
-              emit({ secondsRemaining: next, isActive: true });
-              return next;
-            }
-
+            if (prev > 1) return prev - 1;
             soundEngine.playWorkGo();
             setEnginePhase('RUNNING');
             setDynamicSubMode('STRETCH');
             setCurrentStretchRound(1);
-            emit({ dynamicSubMode: 'STRETCH', stretchRound: 1, secondsRemaining: stretchSeconds, isActive: true });
             return stretchSeconds;
           });
           return;
@@ -191,715 +120,312 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         if (mode === 'DYNAMIC') {
           if (dynamicSubMode === 'STRETCH') {
             setSecondsRemaining((prev) => {
-              if (prev > 1) {
-                const next = prev - 1;
-                emit({ secondsRemaining: next, isActive: true, stretchRound: currentStretchRound });
-                return next;
-              }
-
+              if (prev > 1) return prev - 1;
               if (currentStretchRound < stretchRounds) {
                 soundEngine.playWorkGo();
-                const nextR = currentStretchRound + 1;
-                setCurrentStretchRound(nextR);
-                emit({ stretchRound: nextR, secondsRemaining: stretchSeconds, isActive: true });
+                setCurrentStretchRound((r) => r + 1);
                 return stretchSeconds;
               } else {
                 soundEngine.playRest();
                 setEnginePhase('FINISHED');
                 setIsActive(false);
-                emit({ secondsRemaining: 0, isActive: false });
                 return 0;
               }
             });
           } else {
-            // WARM-UP RUN (3 min) -> Transitions to 90s Post Rest
             setSecondsRemaining((prev) => {
-              if (prev > 1) {
-                const next = prev - 1;
-                emit({ secondsRemaining: next, isActive: true });
-                return next;
-              }
+              if (prev > 1) return prev - 1;
               soundEngine.playRest();
-              setEnginePhase('POST_REST_90');
-              emit({ secondsRemaining: postRestSeconds, isActive: true });
+              setEnginePhase('POST_REST_60');
               return postRestSeconds;
             });
           }
         } else if (mode === 'TABATA') {
           setSecondsRemaining((prev) => {
-            if (prev > 1) {
-              const next = prev - 1;
-              emit({ secondsRemaining: next, isActive: true });
-              return next;
-            }
-
+            if (prev > 1) return prev - 1;
             if (isWorkPhase) {
               soundEngine.playRest();
               setIsWorkPhase(false);
-              emit({ isWorkPhase: false, secondsRemaining: tabataRest, isActive: true });
               return tabataRest;
             } else {
               if (currentRound < tabataRounds) {
                 soundEngine.playWorkGo();
-                const nextR = currentRound + 1;
-                setCurrentRound(nextR);
+                setCurrentRound((r) => r + 1);
                 setIsWorkPhase(true);
-                emit({ isWorkPhase: true, currentRound: nextR, secondsRemaining: tabataWork, isActive: true });
                 return tabataWork;
               } else {
                 soundEngine.playRest();
-                setEnginePhase('POST_REST_90');
-                emit({ secondsRemaining: postRestSeconds, isActive: true });
-                return postRestSeconds;
+                setEnginePhase('FINISHED');
+                setIsActive(false);
+                return 0;
               }
             }
           });
         } else if (mode === 'EMOM') {
           setSecondsRemaining((prev) => {
-            if (prev > 1) {
-              const next = prev - 1;
-              emit({ secondsRemaining: next, isActive: true });
-              return next;
-            }
+            if (prev > 1) return prev - 1;
             if (currentRound < emomRounds) {
               soundEngine.playWorkGo();
-              const nextR = currentRound + 1;
-              setCurrentRound(nextR);
-              emit({ currentRound: nextR, secondsRemaining: emomInterval, isActive: true });
+              setCurrentRound((r) => r + 1);
               return emomInterval;
             } else {
               soundEngine.playRest();
-              setEnginePhase('POST_REST_90');
-              emit({ secondsRemaining: postRestSeconds, isActive: true });
-              return postRestSeconds;
+              setEnginePhase('FINISHED');
+              setIsActive(false);
+              return 0;
             }
           });
-        } else if (mode === 'AMRAP' || mode === 'FOR_TIME') {
+        } else if (mode === 'AMRAP') {
           setSecondsRemaining((prev) => {
-            if (prev > 1) {
-              const next = prev - 1;
-              emit({ secondsRemaining: next, isActive: true });
-              return next;
-            }
+            if (prev > 1) return prev - 1;
             soundEngine.playRest();
-            setEnginePhase('POST_REST_90');
-            emit({ secondsRemaining: postRestSeconds, isActive: true });
-            return postRestSeconds;
+            setEnginePhase('FINISHED');
+            setIsActive(false);
+            return 0;
+          });
+        } else if (mode === 'FOR_TIME') {
+          setSecondsRemaining((prev) => {
+            if (prev + 1 >= forTimeCap) {
+              soundEngine.playRest();
+              setEnginePhase('FINISHED');
+              setIsActive(false);
+              return forTimeCap;
+            }
+            return prev + 1;
           });
         }
       }, 1000);
     }
 
     return () => clearInterval(timer);
-  }, [isActive, enginePhase, mode, dynamicSubMode, currentStretchRound, stretchRounds, stretchSeconds, warmupRunSeconds, isWorkPhase, currentRound, tabataWork, tabataRest, tabataRounds, emomInterval, emomRounds, amrapTotalSeconds, forTimeTotalSeconds, postRestSeconds, isProjectorView]);
+  }, [
+    isActive,
+    enginePhase,
+    mode,
+    dynamicSubMode,
+    currentStretchRound,
+    stretchRounds,
+    stretchSeconds,
+    warmupRunSeconds,
+    postRestSeconds,
+    isWorkPhase,
+    currentRound,
+    tabataRounds,
+    tabataWork,
+    tabataRest,
+    emomRounds,
+    emomInterval,
+    amrapDuration,
+    forTimeCap,
+    enablePrep,
+    isProjectorView,
+    incomingState
+  ]);
 
-  const handleToggleStartPause = () => {
-    if (!isActive) {
-      if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
-        setEnginePhase('PREP_15');
-        setSecondsRemaining(15);
-        emit({ secondsRemaining: 15, isActive: true });
+  useEffect(() => {
+    emit();
+  }, [mode, dynamicSubMode, secondsRemaining, isActive, enginePhase, currentRound, isWorkPhase, currentStretchRound, enablePrep]);
+
+  const handleStart = () => {
+    if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
+      if (enablePrep) {
+        setEnginePhase('PREP_5');
+        setSecondsRemaining(5);
+      } else {
+        soundEngine.playWorkGo();
+        setEnginePhase('RUNNING');
+        if (mode === 'DYNAMIC') setSecondsRemaining(dynamicSubMode === 'RUN' ? warmupRunSeconds : stretchSeconds);
+        if (mode === 'TABATA') setSecondsRemaining(tabataWork);
+        if (mode === 'EMOM') setSecondsRemaining(emomInterval);
+        if (mode === 'AMRAP') setSecondsRemaining(amrapDuration);
+        if (mode === 'FOR_TIME') setSecondsRemaining(0);
       }
       setIsActive(true);
-      emit({ isActive: true });
     } else {
-      setIsActive(false);
-      emit({ isActive: false });
+      setIsActive(true);
     }
   };
 
-  const resetTimer = () => {
+  const handlePause = () => {
+    setIsActive(false);
+  };
+
+  const handleReset = () => {
     setIsActive(false);
     setEnginePhase('IDLE');
     setCurrentRound(1);
     setCurrentStretchRound(1);
     setIsWorkPhase(true);
 
-    let sec = warmupRunSeconds;
     if (mode === 'DYNAMIC') {
-      sec = dynamicSubMode === 'RUN' ? warmupRunSeconds : stretchSeconds;
+      setDynamicSubMode('RUN');
+      setSecondsRemaining(warmupRunSeconds);
     } else if (mode === 'TABATA') {
-      sec = tabataWork;
-    } else if (mode === 'AMRAP') {
-      sec = amrapTotalSeconds;
+      setSecondsRemaining(tabataWork);
     } else if (mode === 'EMOM') {
-      sec = emomInterval;
+      setSecondsRemaining(emomInterval);
+    } else if (mode === 'AMRAP') {
+      setSecondsRemaining(amrapDuration);
     } else if (mode === 'FOR_TIME') {
-      sec = forTimeTotalSeconds;
+      setSecondsRemaining(0);
     }
-
-    setSecondsRemaining(sec);
-    emit({
-      isActive: false,
-      secondsRemaining: sec,
-      currentRound: 1,
-      isWorkPhase: true,
-      dynamicSubMode,
-      stretchRound: 1,
-    });
   };
 
-  const adjustWarmupRunSeconds = (delta: number) => {
-    if (isActive) return;
-    setWarmupRunSeconds((prev) => {
-      const next = Math.max(30, prev + delta);
-      if (mode === 'DYNAMIC' && dynamicSubMode === 'RUN') {
-        setSecondsRemaining(next);
-        emit({ secondsRemaining: next });
+  const handleSkip = () => {
+    if (mode === 'DYNAMIC') {
+      if (enginePhase === 'PREP_5') {
+        soundEngine.playWorkGo();
+        setEnginePhase('RUNNING');
+        setSecondsRemaining(warmupRunSeconds);
+      } else if (dynamicSubMode === 'RUN' && enginePhase === 'RUNNING') {
+        soundEngine.playRest();
+        setEnginePhase('POST_REST_60');
+        setSecondsRemaining(postRestSeconds);
+      } else if (enginePhase === 'POST_REST_60') {
+        soundEngine.playWorkGo();
+        setEnginePhase('RUNNING');
+        setDynamicSubMode('STRETCH');
+        setCurrentStretchRound(1);
+        setSecondsRemaining(stretchSeconds);
+      } else if (dynamicSubMode === 'STRETCH') {
+        if (currentStretchRound < stretchRounds) {
+          soundEngine.playWorkGo();
+          setCurrentStretchRound((r) => r + 1);
+          setSecondsRemaining(stretchSeconds);
+        } else {
+          soundEngine.playRest();
+          setEnginePhase('FINISHED');
+          setIsActive(false);
+        }
       }
-      return next;
-    });
-  };
-
-  const adjustStretchSeconds = (delta: number) => {
-    if (isActive) return;
-    setStretchSeconds((prev) => {
-      const next = Math.max(5, prev + delta);
-      if (mode === 'DYNAMIC' && dynamicSubMode === 'STRETCH') {
-        setSecondsRemaining(next);
-        emit({ secondsRemaining: next });
-      }
-      return next;
-    });
-  };
-
-  const adjustStretchRounds = (delta: number) => {
-    if (isActive) return;
-    setStretchRounds((prev) => Math.max(1, Math.min(20, prev + delta)));
-  };
-
-  const adjustTabataWork = (delta: number) => {
-    if (isActive) return;
-    setTabataWork((prev) => {
-      const next = Math.max(10, prev + delta);
+    } else if (mode === 'TABATA') {
       if (isWorkPhase) {
-        setSecondsRemaining(next);
-        emit({ secondsRemaining: next });
-      }
-      return next;
-    });
-  };
-
-  const adjustTabataRest = (delta: number) => {
-    if (isActive) return;
-    setTabataRest((prev) => Math.max(5, prev + delta));
-  };
-
-  const adjustTabataRounds = (delta: number) => {
-    if (isActive) return;
-    setTabataRounds((prev) => Math.max(1, Math.min(30, prev + delta)));
-  };
-
-  const adjustAmrapSeconds = (delta: number) => {
-    if (isActive) return;
-    setAmrapTotalSeconds((prev) => {
-      const next = Math.max(30, prev + delta);
-      setSecondsRemaining(next);
-      emit({ secondsRemaining: next });
-      return next;
-    });
-  };
-
-  const adjustEmomInterval = (delta: number) => {
-    if (isActive) return;
-    setEmomInterval((prev) => {
-      const next = Math.max(30, prev + delta);
-      setSecondsRemaining(next);
-      emit({ secondsRemaining: next });
-      return next;
-    });
-  };
-
-  const adjustEmomRounds = (delta: number) => {
-    if (isActive) return;
-    setEmomRounds((prev) => Math.max(1, Math.min(60, prev + delta)));
-  };
-
-  const adjustForTimeSeconds = (delta: number) => {
-    if (isActive) return;
-    setForTimeTotalSeconds((prev) => {
-      const next = Math.max(30, prev + delta);
-      setSecondsRemaining(next);
-      emit({ secondsRemaining: next });
-      return next;
-    });
-  };
-
-  const handleSaveCustom = () => {
-    const mins = Math.max(0, parseInt(editMinutes) || 0);
-    const secs = Math.max(0, Math.min(59, parseInt(editSeconds) || 0));
-    const total = mins * 60 + secs;
-    if (total > 0) {
-      if (mode === 'AMRAP') setAmrapTotalSeconds(total);
-      if (mode === 'FOR_TIME') setForTimeTotalSeconds(total);
-      if (!isActive) {
-        setSecondsRemaining(total);
-        emit({ secondsRemaining: total });
+        soundEngine.playRest();
+        setIsWorkPhase(false);
+        setSecondsRemaining(tabataRest);
+      } else {
+        if (currentRound < tabataRounds) {
+          soundEngine.playWorkGo();
+          setCurrentRound((r) => r + 1);
+          setIsWorkPhase(true);
+          setSecondsRemaining(tabataWork);
+        } else {
+          soundEngine.playRest();
+          setEnginePhase('FINISHED');
+          setIsActive(false);
+        }
       }
     }
-    setIsEditingCustom(false);
   };
 
-  const handleSavePostRest = () => {
-    const val = parseInt(editPostRestInput) || 90;
-    setPostRestSeconds(val);
-    if (enginePhase === 'POST_REST_90') {
-      setSecondsRemaining(val);
-      emit({ secondsRemaining: val });
-    }
-    setIsEditingPostRest(false);
-  };
-
-  const formatTime = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const secs = sec % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getTimerTextColor = () => {
-    if (enginePhase === 'PREP_15') return 'text-amber-400';
-    if (enginePhase === 'POST_REST_90') return 'text-[#E32636]';
-    if (mode === 'TABATA' && !isWorkPhase) return 'text-[#E32636]';
-    return 'text-white';
+  const formatDisplayTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
-    <>
-      <BackgroundAudio isPlaying={isActive} isWorkPhase={isWorkPhase && enginePhase !== "POST_REST_90"} isStretchMode={mode === "DYNAMIC" && dynamicSubMode === "STRETCH"} isPreCountdown={enginePhase === "PREP_15"} />
-    <div className={`bg-[#001f5c]/95 border-2 border-[#0047BA] rounded-3xl p-5 sm:p-8 shadow-2xl text-white backdrop-blur-md ${
-      isProjectorView ? 'p-8 sm:p-12' : ''
-    }`}>
-      {/* Top Main Mode Bar */}
-      <div className="grid grid-cols-5 gap-1.5 sm:gap-3 bg-[#020b1c] p-2 rounded-2xl mb-6 border border-[#0047BA]">
-        {(['DYNAMIC', 'TABATA', 'AMRAP', 'EMOM', 'FOR_TIME'] as const).map((m) => (
+    <div className={`flex flex-col items-center justify-center w-full ${isProjectorView ? 'min-h-[85vh]' : ''}`}>
+      {!isProjectorView && (
+        <div className="flex flex-col items-center gap-3 mb-6">
+          <div className="flex flex-wrap gap-2 bg-neutral-900/80 p-2 rounded-2xl border border-neutral-800">
+            {(['DYNAMIC', 'TABATA', 'EMOM', 'AMRAP', 'FOR_TIME'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setIsActive(false);
+                  setEnginePhase('IDLE');
+                  if (m === 'DYNAMIC') {
+                    setDynamicSubMode('RUN');
+                    setSecondsRemaining(warmupRunSeconds);
+                  } else if (m === 'TABATA') {
+                    setSecondsRemaining(tabataWork);
+                  } else if (m === 'EMOM') {
+                    setSecondsRemaining(emomInterval);
+                  } else if (m === 'AMRAP') {
+                    setSecondsRemaining(amrapDuration);
+                  } else if (m === 'FOR_TIME') {
+                    setSecondsRemaining(0);
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                  mode === m ? 'bg-cyan-500 text-neutral-950 shadow-lg shadow-cyan-500/20' : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                {m.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+
+          {/* Prep Toggle Button */}
           <button
-            key={m}
-            type="button"
-            onClick={() => handleModeChange(m)}
-            className={`py-3 rounded-xl font-black text-xs sm:text-base tracking-wider transition truncate text-center cursor-pointer ${
-              mode === m
-                ? 'bg-[#0047BA] text-white shadow-lg shadow-[#0047BA]/60 border border-white/30'
-                : 'text-blue-200 hover:text-white'
+            onClick={() => setEnablePrep(!enablePrep)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+              enablePrep 
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm' 
+                : 'bg-neutral-900 text-neutral-500 border-neutral-800 hover:text-neutral-300'
             }`}
           >
-            {m === 'DYNAMIC' ? 'DYNAMIC' : m.replace('_', ' ')}
+            <Timer size={14} />
+            <span>Prep Countdown (5s): <strong className="uppercase">{enablePrep ? 'ON' : 'OFF'}</strong></span>
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {/* Dynamic Status Indicator */}
-      <div className="text-center mb-3">
-        {enginePhase === 'PREP_15' ? (
-          <span className="text-sm sm:text-lg font-black uppercase tracking-widest px-6 py-2 rounded-full bg-amber-500/20 text-amber-300 border-2 border-amber-500/50 animate-pulse">
-            ⚠️ PRE-COUNTDOWN: 15s PREP
+      <div className="flex items-center gap-3 mb-4">
+        {mode === 'DYNAMIC' && (
+          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            {enginePhase === 'PREP_5'
+              ? 'PREP (5s)'
+              : dynamicSubMode === 'RUN' && enginePhase === 'RUNNING'
+              ? 'WARM-UP RUN'
+              : enginePhase === 'POST_REST_60'
+              ? 'COOL-DOWN & EXPLAIN (60s)'
+              : `STRETCH ${currentStretchRound}/${stretchRounds}`}
           </span>
-        ) : enginePhase === 'POST_REST_90' ? (
-          <span className="text-sm sm:text-lg font-black uppercase tracking-widest px-6 py-2 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50 animate-pulse">
-            🛑 {postRestSeconds}s TRANSITION REST $\rightarrow$ STRETCH
-          </span>
-        ) : mode === 'DYNAMIC' ? (
-          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
-            {dynamicSubMode === 'STRETCH'
-              ? `DYNAMIC STRETCH ${currentStretchRound} OF ${stretchRounds} (${stretchSeconds}s)`
-              : `WARM-UP RUN (${formatTime(warmupRunSeconds)})`}
-          </span>
-        ) : mode === 'TABATA' ? (
-          <span className={`text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full border-2 ${
-            isWorkPhase ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-[#E32636]/20 text-[#E32636] border-[#E32636]/50'
+        )}
+        {mode === 'TABATA' && (
+          <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${
+            isWorkPhase ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
           }`}>
-            {isWorkPhase ? `WORK (${tabataWork}s)` : `REST (${tabataRest}s)`}
-          </span>
-        ) : mode === 'EMOM' ? (
-          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA]/40 text-white border-2 border-[#0047BA]">
-            ROUND {currentRound} OF {emomRounds} ({emomInterval}s)
-          </span>
-        ) : mode === 'AMRAP' ? (
-          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#E32636]/20 text-[#E32636] border-2 border-[#E32636]/50">
-            AMRAP: {formatTime(amrapTotalSeconds)}
-          </span>
-        ) : (
-          <span className="text-sm sm:text-base font-black uppercase tracking-widest px-5 py-1.5 rounded-full bg-[#0047BA] text-white border-2 border-[#0047BA]">
-            FOR TIME: {formatTime(forTimeTotalSeconds)}
+            {enginePhase === 'PREP_5' ? 'PREP (5s)' : isWorkPhase ? `WORK - ROUND ${currentRound}/${tabataRounds}` : `REST - ROUND ${currentRound}/${tabataRounds}`}
           </span>
         )}
       </div>
 
-      {/* Editing Custom Time Modal */}
-      {isEditingCustom ? (
-        <div className="flex flex-col items-center justify-center gap-4 my-6 bg-[#020b1c] p-6 rounded-3xl border-2 border-[#0047BA] shadow-2xl max-w-md mx-auto">
-          <span className="text-sm uppercase font-black tracking-widest text-[#E32636]">Set Custom Duration</span>
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex flex-col items-center">
-              <span className="text-xs uppercase font-bold text-blue-300 mb-1">Mins</span>
-              <input
-                type="number"
-                min="0"
-                max="99"
-                value={editMinutes}
-                onChange={(e) => setEditMinutes(e.target.value)}
-                className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-5xl rounded-2xl p-2.5 focus:outline-none focus:border-[#E32636]"
-              />
-            </div>
-            <span className="text-5xl font-mono font-black text-[#0047BA] mt-4">:</span>
-            <div className="flex flex-col items-center">
-              <span className="text-xs uppercase font-bold text-blue-300 mb-1">Secs</span>
-              <input
-                type="number"
-                min="0"
-                max="59"
-                value={editSeconds}
-                onChange={(e) => setEditSeconds(e.target.value)}
-                className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-5xl rounded-2xl p-2.5 focus:outline-none focus:border-[#E32636]"
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-4 mt-2 w-full justify-center">
-            <button
-              type="button"
-              onClick={handleSaveCustom}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-500 rounded-2xl text-white font-black transition text-sm cursor-pointer shadow-lg"
-            >
-              <Check className="w-5 h-5 stroke-[3]" /> Save
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsEditingCustom(false)}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-300 font-black transition text-sm cursor-pointer shadow-lg"
-            >
-              <X className="w-5 h-5 stroke-[3]" /> Cancel
-            </button>
-          </div>
+      <div className="relative flex items-center justify-center my-6">
+        <div className={`font-black tracking-tighter select-none font-mono ${
+          isProjectorView ? 'text-[14rem] md:text-[20rem]' : 'text-8xl md:text-[11rem]'
+        } ${enginePhase === 'PREP_5' ? 'text-amber-400 animate-pulse' : 'text-white drop-shadow-2xl'}`}>
+          {formatDisplayTime(secondsRemaining)}
         </div>
-      ) : (
-        <div className={`text-center font-mono font-black tracking-tight my-3 select-none ${
-          isProjectorView ? 'text-[16vw] leading-none' : 'text-8xl sm:text-9xl landscape:text-[25vh]'
-        } ${getTimerTextColor()}`}>
-          {formatTime(secondsRemaining)}
-        </div>
-      )}
-
-      {/* Subtitles & Skip Button */}
-      <div className="text-center text-base sm:text-lg font-bold text-blue-200 mb-6">
-        {enginePhase === 'PREP_15' ? (
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-amber-300 font-black text-xl">Get In Position</span>
-            {!isProjectorView && (
-              <button
-                type="button"
-                onClick={skipPrepCountdown}
-                className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-sm rounded-2xl shadow-xl transition active:scale-95 cursor-pointer"
-              >
-                <FastForward className="w-5 h-5 fill-current" /> SKIP PREP
-              </button>
-            )}
-          </div>
-        ) : enginePhase === 'POST_REST_90' ? (
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-[#E32636] font-black text-xl">Rest $\rightarrow$ Dynamic Stretch Next</span>
-            {!isProjectorView && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditPostRestInput(postRestSeconds.toString());
-                  setIsEditingPostRest(true);
-                }}
-                className="text-sm bg-[#020b1c] px-3.5 py-1.5 rounded-xl border-2 border-[#E32636]/60 text-white font-black flex items-center gap-1.5 cursor-pointer shadow-lg"
-              >
-                <Edit3 className="w-4 h-4" /> Edit Rest
-              </button>
-            )}
-          </div>
-        ) : mode === 'DYNAMIC' ? (
-          <span>
-            {dynamicSubMode === 'STRETCH' ? (
-              <>Stretch <span className="text-white text-2xl font-black">{currentStretchRound}</span> of {stretchRounds} (Continuous 20s)</>
-            ) : (
-              'Continuous Warm-up Run'
-            )}
-          </span>
-        ) : mode === 'TABATA' ? (
-          <span>Round <span className="text-white text-2xl font-black">{currentRound}</span> of {tabataRounds}</span>
-        ) : mode === 'EMOM' ? (
-          <span>Round <span className="text-white text-2xl font-black">{currentRound}</span> of {emomRounds}</span>
-        ) : null}
       </div>
 
-      {/* Post Rest Edit Modal */}
-      {isEditingPostRest && (
-        <div className="flex items-center justify-center gap-3 bg-[#020b1c] p-4 rounded-3xl border-2 border-[#0047BA] max-w-sm mx-auto mb-6 shadow-2xl">
-          <input
-            type="number"
-            value={editPostRestInput}
-            onChange={(e) => setEditPostRestInput(e.target.value)}
-            className="w-24 text-center bg-[#001f5c] border-2 border-[#0047BA] text-white font-mono font-black text-3xl rounded-2xl p-2"
-          />
-          <span className="text-sm text-blue-300 font-bold">Seconds</span>
-          <button type="button" onClick={handleSavePostRest} className="p-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-white">
-            <Check className="w-6 h-6 stroke-[3]" />
-          </button>
-          <button type="button" onClick={() => setIsEditingPostRest(false)} className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300">
-            <X className="w-6 h-6 stroke-[3]" />
-          </button>
-        </div>
-      )}
-
-      {/* DYNAMIC CARD: BIG BUTTONS TO CHOOSE BETWEEN STRETCHES OR RUN */}
-      {!isProjectorView && mode === 'DYNAMIC' && (
-        <div className="space-y-4 max-w-lg mx-auto mb-6">
-          {!isActive && (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleDynamicSubModeChange('STRETCH')}
-                className={`flex flex-col items-center justify-center gap-1 py-4 px-2 rounded-2xl border-2 font-black transition cursor-pointer active:scale-95 shadow-lg ${
-                  dynamicSubMode === 'STRETCH'
-                    ? 'bg-emerald-600 border-emerald-400 text-white shadow-emerald-600/30'
-                    : 'bg-[#020b1c] border-[#0047BA] text-blue-300 hover:text-white'
-                }`}
-              >
-                <Activity className="w-6 h-6" />
-                <span className="text-sm uppercase tracking-wider">Dynamic Stretches</span>
-                <span className="text-[10px] opacity-80">6 × 20s (2 Min Total)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleDynamicSubModeChange('RUN')}
-                className={`flex flex-col items-center justify-center gap-1 py-4 px-2 rounded-2xl border-2 font-black transition cursor-pointer active:scale-95 shadow-lg ${
-                  dynamicSubMode === 'RUN'
-                    ? 'bg-[#E32636] border-[#ff5a68] text-white shadow-[#E32636]/30'
-                    : 'bg-[#020b1c] border-[#0047BA] text-blue-300 hover:text-white'
-                }`}
-              >
-                <Flame className="w-6 h-6" />
-                <span className="text-sm uppercase tracking-wider">Warm-up Run</span>
-                <span className="text-[10px] opacity-80">{formatTime(warmupRunSeconds)} Run</span>
-              </button>
-            </div>
-          )}
-
-          {/* Steppers based on chosen Dynamic Sub-Mode */}
-          {!isActive && dynamicSubMode === 'STRETCH' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3 rounded-2xl shadow-lg">
-                <span className="text-sm font-black uppercase text-blue-300 ml-1">Stretch Time: {stretchSeconds}s</span>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustStretchSeconds(-5)} className="p-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white transition active:scale-95">
-                    <Minus className="w-4 h-4 stroke-[3]" />
-                  </button>
-                  <button type="button" onClick={() => adjustStretchSeconds(5)} className="p-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-white transition active:scale-95">
-                    <Plus className="w-4 h-4 stroke-[3]" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-4 py-3 rounded-2xl shadow-lg">
-                <span className="text-sm font-black uppercase text-white">Rounds: {stretchRounds}</span>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustStretchRounds(-1)} className="px-3 py-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-black text-white transition active:scale-95">
-                    -1 Rd
-                  </button>
-                  <button type="button" onClick={() => adjustStretchRounds(1)} className="px-3 py-1.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-xl text-xs font-black text-white transition active:scale-95">
-                    +1 Rd
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!isActive && dynamicSubMode === 'RUN' && (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => adjustWarmupRunSeconds(-30)}
-                className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-2xl text-sm font-mono font-black shadow-xl transition cursor-pointer"
-              >
-                <Minus className="w-5 h-5 stroke-[3]" />
-                <span>30s Run</span>
-              </button>
-              <button
-               type="button"
-                onClick={() => adjustWarmupRunSeconds(30)}
-                className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-2xl text-sm font-mono font-black shadow-xl transition cursor-pointer"
-              >
-                <Plus className="w-5 h-5 stroke-[3]" />
-                <span>30s Run</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* DOUBLE-SIZED TABATA CONTROLS */}
-      {!isProjectorView && !isActive && mode === 'TABATA' && (
-        <div className="space-y-3 max-w-lg mx-auto mb-6">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3.5 rounded-3xl shadow-lg">
-              <span className="text-sm font-black uppercase text-blue-300 ml-1">Work: {tabataWork}s</span>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => adjustTabataWork(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
-                  <Minus className="w-5 h-5 stroke-[3]" />
-                </button>
-                <button type="button" onClick={() => adjustTabataWork(10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
-                  <Plus className="w-5 h-5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] p-3.5 rounded-3xl shadow-lg">
-              <span className="text-sm font-black uppercase text-[#E32636] ml-1">Rest: {tabataRest}s</span>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => adjustTabataRest(-10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
-                  <Minus className="w-5 h-5 stroke-[3]" />
-                </button>
-                <button type="button" onClick={() => adjustTabataRest(10)} className="p-3 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-white transition active:scale-95">
-                  <Plus className="w-5 h-5 stroke-[3]" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-5 py-3.5 rounded-3xl shadow-lg">
-            <span className="text-base font-black uppercase text-white">Rounds: {tabataRounds}</span>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => adjustTabataRounds(-1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
-                -1 Round
-              </button>
-              <button type="button" onClick={() => adjustTabataRounds(1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
-                +1 Round
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DOUBLE-SIZED AMRAP CONTROLS */}
-      {!isProjectorView && !isActive && !isEditingCustom && mode === 'AMRAP' && (
-        <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto mb-6">
-          <button
-            type="button"
-            onClick={() => adjustAmrapSeconds(-30)}
-            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
-          >
-            <Minus className="w-6 h-6 stroke-[3]" />
-            <span>30s</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEditMinutes(Math.floor(amrapTotalSeconds / 60).toString());
-              setEditSeconds((amrapTotalSeconds % 60).toString().padStart(2, '0'));
-              setIsEditingCustom(true);
-            }}
-            className="flex items-center justify-center gap-2 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-4 rounded-3xl text-sm font-black shadow-xl transition cursor-pointer"
-          >
-            <Edit3 className="w-5 h-5 stroke-[2.5]" />
-            <span>EDIT</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => adjustAmrapSeconds(30)}
-            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
-          >
-            <Plus className="w-6 h-6 stroke-[3]" />
-            <span>30s</span>
-          </button>
-        </div>
-      )}
-
-      {/* DOUBLE-SIZED EMOM CONTROLS */}
-      {!isProjectorView && !isActive && mode === 'EMOM' && (
-        <div className="space-y-3 max-w-lg mx-auto mb-6">
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => adjustEmomInterval(-30)}
-              className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-3xl text-sm font-mono font-black shadow-lg transition cursor-pointer"
-            >
-              <Minus className="w-5 h-5 stroke-[3]" />
-              <span>30s</span>
-            </button>
-            <div className="flex items-center justify-center text-sm font-black uppercase text-blue-300 border-2 border-[#0047BA]/50 rounded-3xl bg-[#020b1c]/50">
-              {emomInterval}s / Rd
-            </div>
-            <button
-              type="button"
-              onClick={() => adjustEmomInterval(30)}
-              className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-3.5 rounded-3xl text-sm font-mono font-black shadow-lg transition cursor-pointer"
-            >
-              <Plus className="w-5 h-5 stroke-[3]" />
-              <span>30s</span>
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between bg-[#020b1c] border-2 border-[#0047BA] px-5 py-3.5 rounded-3xl shadow-lg">
-            <span className="text-base font-black uppercase text-white">Rounds: {emomRounds}</span>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => adjustEmomRounds(-1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
-                -1 Round
-              </button>
-              <button type="button" onClick={() => adjustEmomRounds(1)} className="px-4 py-2.5 bg-[#001f5c] hover:bg-[#0047BA] rounded-2xl text-sm font-black text-white transition active:scale-95">
-                +1 Round
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DOUBLE-SIZED FOR TIME CONTROLS */}
-      {!isProjectorView && !isActive && !isEditingCustom && mode === 'FOR_TIME' && (
-        <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto mb-6">
-          <button
-            type="button"
-            onClick={() => adjustForTimeSeconds(-30)}
-            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
-          >
-            <Minus className="w-6 h-6 stroke-[3]" />
-            <span>30s</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEditMinutes(Math.floor(forTimeTotalSeconds / 60).toString());
-              setEditSeconds((forTimeTotalSeconds % 60).toString().padStart(2, '0'));
-              setIsEditingCustom(true);
-            }}
-            className="flex items-center justify-center gap-2 bg-[#0047BA]/40 hover:bg-[#0047BA]/70 active:scale-95 text-white border-2 border-white/40 py-4 rounded-3xl text-sm font-black shadow-xl transition cursor-pointer"
-          >
-            <Edit3 className="w-5 h-5 stroke-[2.5]" />
-            <span>EDIT</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => adjustForTimeSeconds(30)}
-            className="flex items-center justify-center gap-2 bg-[#020b1c] hover:bg-[#0047BA]/40 active:scale-95 text-blue-200 hover:text-white border-2 border-[#0047BA] py-4 rounded-3xl text-lg font-mono font-black shadow-xl transition cursor-pointer"
-          >
-            <Plus className="w-6 h-6 stroke-[3]" />
-            <span>30s</span>
-          </button>
-        </div>
-      )}
-
-      {/* DOUBLE-SIZED ACTION BUTTONS */}
       {!isProjectorView && (
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center gap-4 mt-8">
           <button
-            type="button"
-            onClick={handleToggleStartPause}
-            className={`flex items-center justify-center gap-3 flex-1 max-w-md py-4 sm:py-5 rounded-3xl font-black text-xl sm:text-2xl tracking-wider transition shadow-2xl cursor-pointer active:scale-95 ${
-              isActive
-                ? 'bg-[#E32636] hover:bg-[#c91e2c] text-white shadow-lg shadow-[#E32636]/40'
-                : 'bg-[#0047BA] hover:bg-[#003da5] text-white shadow-lg shadow-[#0047BA]/50 border border-white/20'
+            onClick={isActive ? handlePause : handleStart}
+            className={`p-6 rounded-3xl font-black flex items-center gap-2 transition-all shadow-xl ${
+              isActive ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950' : 'bg-cyan-500 hover:bg-cyan-400 text-neutral-950'
             }`}
           >
-            {isActive ? <><Pause className="w-6 h-6 fill-current" /> PAUSE</> : <><Play className="w-6 h-6 fill-current" /> START</>}
+            {isActive ? <Pause size={32} /> : <Play size={32} />}
           </button>
-          <button type="button" onClick={resetTimer} className="p-4 sm:p-5 bg-[#020b1c] hover:bg-[#001f5c] text-blue-200 rounded-3xl border-2 border-[#0047BA] transition cursor-pointer active:scale-95">
-            <RotateCcw className="w-6 h-6 stroke-[2.5]" />
+          <button
+            onClick={handleReset}
+            className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
+          >
+            <RotateCcw size={32} />
+          </button>
+          <button
+            onClick={handleSkip}
+            className="p-6 rounded-3xl bg-neutral-800 hover:bg-neutral-700 text-white transition-all border border-neutral-700"
+          >
+            <FastForward size={32} />
           </button>
         </div>
       )}
     </div>
-    </>
   );
-};
+}
