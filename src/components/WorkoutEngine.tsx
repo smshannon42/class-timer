@@ -42,7 +42,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   const [secondsRemaining, setSecondsRemaining] = useState(180);
   const [isActive, setIsActive] = useState(false);
-  const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_5' | 'RUNNING' | 'POST_REST_60' | 'FINISHED'>('IDLE');
+  const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_7' | 'RUNNING' | 'POST_REST_60' | 'FINISHED'>('IDLE');
 
   const isMusicPlaying = isActive && enginePhase === 'RUNNING' && (mode !== 'TABATA' || isWorkPhase);
 
@@ -105,7 +105,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     if (isActive) {
       timer = setInterval(() => {
-        if (enginePhase === 'PREP_5') {
+        if (enginePhase === 'PREP_7') {
           setSecondsRemaining((prev) => {
             if (prev > 1) return prev - 1;
             soundEngine.playWorkGo();
@@ -273,8 +273,8 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const handleStart = () => {
     if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
       if (enablePrep) {
-        setEnginePhase('PREP_5');
-        setSecondsRemaining(5);
+        setEnginePhase('PREP_7');
+        setSecondsRemaining(7);
       } else {
         soundEngine.playWorkGo();
         setEnginePhase('RUNNING');
@@ -317,7 +317,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   const handleSkip = () => {
     if (mode === 'DYNAMIC') {
-      if (enginePhase === 'PREP_5') {
+      if (enginePhase === 'PREP_7') {
         soundEngine.playWorkGo();
         setEnginePhase('RUNNING');
         setSecondsRemaining(warmupRunSeconds);
@@ -451,7 +451,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             }`}
           >
             <Timer size={14} />
-            <span>Prep Countdown (5s): <strong className="uppercase">{enablePrep ? 'ON' : 'OFF'}</strong></span>
+            <span>Prep Countdown (7s): <strong className="uppercase">{enablePrep ? 'ON' : 'OFF'}</strong></span>
           </button>
 
           {/* TABATA Scroll Controls */}
@@ -527,7 +527,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             </div>
           )}
 
-          {/* EMOM Scroll Control (Default 60s, +/- 5s) */}
+          {/* EMOM Scroll Control */}
           {mode === 'EMOM' && (
             <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -566,7 +566,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             </div>
           )}
 
-          {/* AMRAP Scroll Control (Default 5m, +/- 30s) */}
+          {/* AMRAP Scroll Control */}
           {mode === 'AMRAP' && (
             <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-fuchsia-500/30 rounded-2xl p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -605,7 +605,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             </div>
           )}
 
-          {/* FOR TIME Scroll Control (Default 10m cap, +/- 30s) */}
+          {/* FOR TIME Scroll Control */}
           {mode === 'FOR_TIME' && (
             <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-indigo-500/30 rounded-2xl p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -649,8 +649,8 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       <div className="flex items-center gap-3">
         {mode === 'DYNAMIC' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            {enginePhase === 'PREP_5'
-              ? 'PREP (5s)'
+            {enginePhase === 'PREP_7'
+              ? 'PREP (7s)'
               : dynamicSubMode === 'RUN' && enginePhase === 'RUNNING'
               ? 'WARM-UP RUN'
               : enginePhase === 'POST_REST_60'
@@ -662,22 +662,22 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${
             isWorkPhase ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
           }`}>
-            {enginePhase === 'PREP_5' ? 'PREP (5s)' : isWorkPhase ? `WORK - ROUND ${currentRound}/${tabataRounds}` : `REST - ROUND ${currentRound}/${tabataRounds}`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : isWorkPhase ? `WORK - ROUND ${currentRound}/${tabataRounds}` : `REST - ROUND ${currentRound}/${tabataRounds}`}
           </span>
         )}
         {mode === 'EMOM' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            {enginePhase === 'PREP_5' ? 'PREP (5s)' : `ROUND ${currentRound}/${emomRounds}`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}/${emomRounds}`}
           </span>
         )}
         {mode === 'AMRAP' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
-            {enginePhase === 'PREP_5' ? 'PREP (5s)' : `AMRAP - ${formatIntervalLabel(amrapDuration)}`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `AMRAP - ${formatIntervalLabel(amrapDuration)}`}
           </span>
         )}
         {mode === 'FOR_TIME' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            {enginePhase === 'PREP_5' ? 'PREP (5s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
           </span>
         )}
       </div>
@@ -689,7 +689,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       <div className="relative flex items-center justify-center my-4">
         <div className={`font-black tracking-tighter select-none font-mono ${
           isProjectorView ? 'text-[14rem] md:text-[20rem]' : 'text-8xl md:text-[11rem]'
-        } ${enginePhase === 'PREP_5' ? 'text-amber-400 animate-pulse' : 'text-white drop-shadow-2xl'}`}>
+        } ${enginePhase === 'PREP_7' ? 'text-amber-400 animate-pulse' : 'text-white drop-shadow-2xl'}`}>
           {formatDisplayTime(secondsRemaining)}
         </div>
       </div>
