@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Music, Shuffle, SkipForward, Volume2, ShieldCheck } from 'lucide-react';
+import { Music, SkipForward, Volume2, VolumeX } from 'lucide-react';
 
 interface YouTubePlayerProps {
   isPlaying: boolean;
@@ -16,11 +16,9 @@ declare global {
 
 const GYM_PLAYLIST_ID = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
 
-// Common markers for explicit uploads
-const EXPLICIT_KEYWORDS = ['explicit', 'parental advisory', 'dirty version', '[explicit]', '(explicit)'];
-
 export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   const [isReady, setIsReady] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [currentTitle, setCurrentTitle] = useState<string>('Loading track...');
   const playerRef = useRef<any>(null);
 
@@ -63,17 +61,9 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
             setIsReady(true);
           },
           onStateChange: (event: any) => {
-            // When a track starts or cues, check title for explicit markers
             if (event.data === window.YT?.PlayerState?.PLAYING || event.data === window.YT?.PlayerState?.CUED) {
               const videoData = event.target.getVideoData();
-              const title = videoData?.title || 'Gym Playlist Track';
-              setCurrentTitle(title);
-
-              const isExplicit = EXPLICIT_KEYWORDS.some((kw) => title.toLowerCase().includes(kw));
-              if (isExplicit) {
-                console.warn(`[ClassTimer] Skipped explicit track: "${title}"`);
-                event.target.nextVideo();
-              }
+              setCurrentTitle(videoData?.title || 'Gym Playlist Track');
             }
           },
         },
@@ -112,11 +102,22 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
     }
   }, [isPlaying, isReady]);
 
+  const toggleMute = () => {
+    if (!playerRef.current) return;
+
+    if (isMuted) {
+      playerRef.current.unMute();
+      setIsMuted(false);
+    } else {
+      playerRef.current.mute();
+      setIsMuted(true);
+    }
+  };
+
   const handleNextSong = () => {
     if (playerRef.current?.nextVideo) {
       playerRef.current.nextVideo();
       if (!isPlaying) {
-        // Keep it paused if the timer itself is paused
         setTimeout(() => {
           playerRef.current?.pauseVideo();
         }, 150);
@@ -126,34 +127,21 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
 
   return (
     <div className="w-full max-w-xl mx-auto mt-6 p-4 rounded-2xl bg-neutral-900/90 border border-neutral-800 shadow-xl">
-      {/* Top Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm">
-          <Music size={16} />
-          <span>Gym Audio Deck</span>
-          <span className="flex items-center gap-1 text-[11px] text-neutral-400 bg-neutral-800/80 px-2 py-0.5 rounded-md border border-neutral-700">
-            <Shuffle size={11} className="text-cyan-400" /> Shuffled
-          </span>
-          <span className="flex items-center gap-1 text-[11px] text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-800/50">
-            <ShieldCheck size={11} /> Clean Filter
-          </span>
-        </div>
-        <span
-          className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider ${
-            isPlaying
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : 'bg-neutral-800 text-neutral-400'
-          }`}
-        >
-          {isPlaying ? 'Music Playing' : 'Music Paused'}
-        </span>
+      {/* Header */}
+      <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm mb-3">
+        <Music size={16} />
+        <span>Gym Audio Deck</span>
       </div>
 
-      {/* Music-Style Audio Deck (No video screen) */}
+      {/* Audio Deck Controls */}
       <div className="flex items-center justify-between bg-neutral-950 border border-neutral-800 rounded-xl p-3.5">
         <div className="flex items-center gap-3 overflow-hidden mr-3">
           <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0 text-cyan-400">
-            <Volume2 size={18} className={isPlaying ? 'animate-pulse' : 'opacity-40'} />
+            {isMuted ? (
+              <VolumeX size={18} className="text-neutral-500" />
+            ) : (
+              <Volume2 size={18} className={isPlaying ? 'animate-pulse' : 'opacity-40'} />
+            )}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-semibold text-white truncate">{currentTitle}</span>
@@ -161,19 +149,35 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
           </div>
         </div>
 
-        {/* Next Song Button */}
-        <button
-          type="button"
-          onClick={handleNextSong}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:scale-95 text-neutral-200 text-xs font-bold transition-all border border-neutral-700 shrink-0"
-          title="Skip to next song"
-        >
-          <SkipForward size={14} />
-          <span>Skip</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleMute}
+            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all border active:scale-95 ${
+              isMuted
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                : 'bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700'
+            }`}
+            title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+          >
+            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            <span>{isMuted ? 'Unmute' : 'Mute'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNextSong}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:scale-95 text-neutral-200 text-xs font-bold transition-all border border-neutral-700"
+            title="Skip to next song"
+          >
+            <SkipForward size={14} />
+            <span>Skip</span>
+          </button>
+        </div>
       </div>
 
-      {/* Hidden YouTube IFrame container (Off-screen / 1px so audio still runs) */}
+      {/* Hidden YouTube IFrame */}
       <div className="absolute -left-[9999px] -top-[9999px] w-[1px] h-[1px] overflow-hidden pointer-events-none opacity-0">
         <div id="yt-player-target" />
       </div>
