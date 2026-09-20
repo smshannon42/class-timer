@@ -8,7 +8,7 @@ class SoundEngine {
   }
 
   playWorkGo() {
-    this.playSound('/sounds/Mario Kart Start.mp3');
+    this.playSound('/sounds/Timer 3beeps.mp3');
   }
 
   playCountdownTick() {
