@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, FastForward, Timer } from 'lucide-react';
+import { Play, Pause, RotateCcw, FastForward, Timer, Plus, Minus } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
 import YouTubePlayer from './YouTubePlayer';
 
@@ -23,6 +23,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [currentStretchRound, setCurrentStretchRound] = useState(1);
   const [postRestSeconds, setPostRestSeconds] = useState(60);
 
+  // Tabata State with 20s/10s Defaults
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
@@ -39,7 +40,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [isActive, setIsActive] = useState(false);
   const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_5' | 'RUNNING' | 'POST_REST_60' | 'FINISHED'>('IDLE');
 
-  // Music condition: Timer must be active, running, and NOT in rest or prep
   const isMusicPlaying = isActive && enginePhase === 'RUNNING' && (mode !== 'TABATA' || isWorkPhase);
 
   const emit = (overrides = {}) => {
@@ -84,6 +84,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       setStretchSeconds(incomingState.stretchSeconds);
       setWarmupRunSeconds(incomingState.warmupRunSeconds);
       setPostRestSeconds(incomingState.postRestSeconds);
+      setTabataWork(incomingState.tabataWork ?? 20);
+      setTabataRest(incomingState.tabataRest ?? 10);
+      setTabataRounds(incomingState.tabataRounds ?? 8);
       setEnablePrep(incomingState.enablePrep ?? false);
       return;
     }
@@ -228,7 +231,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   useEffect(() => {
     emit();
-  }, [mode, dynamicSubMode, secondsRemaining, isActive, enginePhase, currentRound, isWorkPhase, currentStretchRound, enablePrep, isMusicPlaying]);
+  }, [mode, dynamicSubMode, secondsRemaining, isActive, enginePhase, currentRound, isWorkPhase, currentStretchRound, enablePrep, isMusicPlaying, tabataWork, tabataRest]);
 
   const handleStart = () => {
     if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
@@ -322,6 +325,19 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     }
   };
 
+  const adjustTabataWork = (delta: number) => {
+    const nextVal = Math.max(5, tabataWork + delta);
+    setTabataWork(nextVal);
+    if (mode === 'TABATA' && enginePhase === 'IDLE') {
+      setSecondsRemaining(nextVal);
+    }
+  };
+
+  const adjustTabataRest = (delta: number) => {
+    const nextVal = Math.max(5, tabataRest + delta);
+    setTabataRest(nextVal);
+  };
+
   const formatDisplayTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
@@ -373,6 +389,91 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             <Timer size={14} />
             <span>Prep Countdown (5s): <strong className="uppercase">{enablePrep ? 'ON' : 'OFF'}</strong></span>
           </button>
+
+          {/* Tabata Work & Rest Rotary Pickers */}
+          {mode === 'TABATA' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md mt-1">
+              {/* Work Interval Wheel */}
+              <div className="bg-neutral-900/90 border border-emerald-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Work Interval</span>
+                  <span className="text-lg font-black text-white font-mono">{tabataWork}s</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => adjustTabataWork(-5)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
+                    title="Minus 5 seconds"
+                  >
+                    <Minus size={14} />
+                  </button>
+
+                  <input
+                    type="range"
+                    min="5"
+                    max="90"
+                    step="5"
+                    value={tabataWork}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setTabataWork(val);
+                      if (enginePhase === 'IDLE') setSecondsRemaining(val);
+                    }}
+                    className="w-full accent-emerald-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => adjustTabataWork(5)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
+                    title="Plus 5 seconds"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Rest Interval Wheel */}
+              <div className="bg-neutral-900/90 border border-amber-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Rest Interval</span>
+                  <span className="text-lg font-black text-white font-mono">{tabataRest}s</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => adjustTabataRest(-5)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
+                    title="Minus 5 seconds"
+                  >
+                    <Minus size={14} />
+                  </button>
+
+                  <input
+                    type="range"
+                    min="5"
+                    max="60"
+                    step="5"
+                    value={tabataRest}
+                    onChange={(e) => setTabataRest(Number(e.target.value))}
+                    className="w-full accent-amber-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => adjustTabataRest(5)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
+                    title="Plus 5 seconds"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -430,7 +531,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             </button>
           </div>
 
-          {/* Connected YouTube Playlist */}
+          {/* YouTube Audio Deck */}
           <YouTubePlayer isPlaying={isMusicPlaying} />
         </>
       )}
