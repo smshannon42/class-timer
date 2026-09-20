@@ -15,7 +15,7 @@ declare global {
   }
 }
 
-export default function YouTubePlayer({ isPlaying, defaultPlaylistId = 'PLw-VjHDlEOgvtnnnqWlTqByAtC7tXBg6D' }: YouTubePlayerProps) {
+export default function YouTubePlayer({ isPlaying, defaultPlaylistId = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT' }: YouTubePlayerProps) {
   const [playlistInput, setPlaylistInput] = useState('');
   const [activePlaylistId, setActivePlaylistId] = useState(defaultPlaylistId);
   const [isReady, setIsReady] = useState(false);
