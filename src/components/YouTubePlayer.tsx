@@ -41,14 +41,20 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
         events: {
           onReady: (event: any) => {
             try {
-              // Lock strictly to gym playlist, force shuffle, and loop
+              // Load the playlist, enable shuffle, and pick a random starting track
+              event.target.setShuffle(true);
+              event.target.setLoop(true);
+              
+              // Randomize starting position across the playlist
+              const playlist = event.target.getPlaylist();
+              const playlistLength = Array.isArray(playlist) ? playlist.length : 20;
+              const randomIndex = Math.floor(Math.random() * Math.max(playlistLength, 1));
+              
               event.target.cuePlaylist({
                 list: GYM_PLAYLIST_ID,
                 listType: 'playlist',
-                index: 0,
+                index: randomIndex,
               });
-              event.target.setShuffle(true);
-              event.target.setLoop(true);
             } catch (err) {
               console.warn('Playlist shuffle init warning:', err);
             }
@@ -111,7 +117,7 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
         </span>
       </div>
 
-      {/* Embedded Video Target */}
+      {/* Embedded Video Player */}
       <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800">
         <div id="yt-player-target" className="w-full h-full" />
       </div>
