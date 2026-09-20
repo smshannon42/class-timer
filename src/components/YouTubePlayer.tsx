@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Music, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { SkipForward, Volume2, VolumeX } from 'lucide-react';
 
 interface YouTubePlayerProps {
   isPlaying: boolean;
@@ -119,53 +119,44 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto mt-6 p-4 rounded-2xl bg-neutral-900/90 border border-neutral-800 shadow-xl">
-      {/* Header */}
-      <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm mb-3">
-        <Music size={16} />
-        <span>Gym Audio Deck</span>
+    <div className="flex items-center gap-2 mt-2 max-w-lg">
+      {/* Blue Pill Container */}
+      <div className="flex items-center gap-3 px-3 py-1.5 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-sm backdrop-blur-sm">
+        {/* Track Title */}
+        <span className="truncate max-w-[190px] sm:max-w-[260px]" title={currentTitle}>
+          {currentTitle}
+        </span>
+
+        <span className="text-cyan-500/40">|</span>
+
+        {/* Mute / Unmute Button */}
+        <button
+          type="button"
+          onClick={toggleMute}
+          className="flex items-center gap-1 hover:text-white transition-colors active:scale-95"
+          title={isMuted ? 'Unmute' : 'Mute'}
+        >
+          {isMuted ? <VolumeX size={13} className="text-amber-400" /> : <Volume2 size={13} />}
+          <span className="text-[11px] uppercase tracking-wider">{isMuted ? 'Unmute' : 'Mute'}</span>
+        </button>
+
+        <span className="text-cyan-500/40">|</span>
+
+        {/* Skip Button */}
+        <button
+          type="button"
+          onClick={handleNextSong}
+          className="flex items-center gap-1 hover:text-white transition-colors active:scale-95"
+          title="Skip track"
+        >
+          <SkipForward size={13} />
+          <span className="text-[11px] uppercase tracking-wider">Skip</span>
+        </button>
       </div>
 
-      {/* Audio Deck Controls */}
-      <div className="flex items-center justify-between bg-neutral-950 border border-neutral-800 rounded-xl p-3.5">
-        <div className="flex items-center gap-3 overflow-hidden mr-3">
-          {/* Active Thumbnail: Gives YouTube an active, non-throttled visual surface without taking over the screen */}
-          <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-neutral-800 bg-neutral-900 relative">
-            <div id="yt-player-target" className="w-full h-full object-cover scale-150 pointer-events-none" />
-          </div>
-
-          <div className="flex flex-col min-w-0">
-            <span className="text-xs font-semibold text-white truncate">{currentTitle}</span>
-            <span className="text-[10px] text-neutral-500">Auto-synced to timer intervals</span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={toggleMute}
-            className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition-all border active:scale-95 ${
-              isMuted
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
-                : 'bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700'
-            }`}
-            title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
-          >
-            {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-            <span>{isMuted ? 'Unmute' : 'Mute'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleNextSong}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 active:scale-95 text-neutral-200 text-xs font-bold transition-all border border-neutral-700"
-            title="Skip to next song"
-          >
-            <SkipForward size={14} />
-            <span>Skip</span>
-          </button>
-        </div>
+      {/* Tiny hidden render container for YouTube engine to prevent Chrome throttle */}
+      <div className="w-[1px] h-[1px] opacity-0 overflow-hidden pointer-events-none relative">
+        <div id="yt-player-target" />
       </div>
     </div>
   );
