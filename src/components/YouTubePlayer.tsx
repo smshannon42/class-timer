@@ -1,20 +1,32 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, Volume2, VolumeX, ExternalLink } from 'lucide-react';
+import { Play, Pause, SkipForward, Volume2, VolumeX, Link, Check } from 'lucide-react';
 
 interface YouTubePlayerProps {
   isPlaying: boolean;
 }
 
-const ORIGINAL_PLAYLIST_ID = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
+const DEFAULT_PLAYLIST_ID = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
 
 export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [manualPlay, setManualPlay] = useState(false);
+  const [playlistId, setPlaylistId] = useState<string>(DEFAULT_PLAYLIST_ID);
+  const [inputUrl, setInputUrl] = useState<string>('');
+  const [showUrlInput, setShowUrlInput] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [manualPlay, setManualPlay] = useState<boolean>(false);
 
-  // Send direct command to iframe
+  // Load saved playlist ID from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('class_timer_playlist_id');
+      if (saved) {
+        setPlaylistId(saved);
+      }
+    }
+  }, []);
+
   const sendCommand = (func: string, args: any[] = []) => {
     if (!iframeRef.current?.contentWindow) return;
     iframeRef.current.contentWindow.postMessage(
@@ -62,10 +74,36 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
     sendCommand('nextVideo');
   };
 
+  const handleSaveUrl = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputUrl.trim()) return;
+
+    let extractedId = inputUrl.trim();
+
+    // Check for ?list= or &list=
+    const listMatch = inputUrl.match(/[?&]list=([^#&?]+)/);
+    if (listMatch && listMatch[1]) {
+      extractedId = listMatch[1];
+    } else {
+      // Check if it's a direct video link v=
+      const vMatch = inputUrl.match(/[?&]v=([^#&?]+)/);
+      if (vMatch && vMatch[1]) {
+        extractedId = vMatch[1];
+      }
+    }
+
+    setPlaylistId(extractedId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('class_timer_playlist_id', extractedId);
+    }
+    setShowUrlInput(false);
+    setInputUrl('');
+  };
+
   return (
-    <div className="flex flex-col items-center gap-2 mt-2">
-      {/* Blue Pill Control Bar */}
-      <div className="flex items-center gap-2.5 px-4 py-2 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-sm backdrop-blur-sm">
+    <div className="flex flex-col items-center gap-2 mt-2 w-full max-w-md">
+      {/* Blue Pill Audio Control Bar */}
+      <div className="flex items-center justify-center gap-2.5 px-4 py-2 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-sm backdrop-blur-sm">
         {/* Play/Pause */}
         <button
           type="button"
@@ -105,27 +143,65 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
 
         <span className="text-cyan-500/40">|</span>
 
-        {/* Pop-out Link */}
-        <a
-          href={`https://music.youtube.com/playlist?list=${ORIGINAL_PLAYLIST_ID}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-white transition-colors p-0.5"
-          title="Open Playlist in YouTube Music"
+        {/* Toggle Paste URL Input */}
+        <button
+          type="button"
+          onClick={() => setShowUrlInput(!showUrlInput)}
+          className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-all active:scale-95 ${
+            showUrlInput ? 'bg-cyan-500 text-neutral-950' : 'hover:text-white'
+          }`}
+          title="Paste playlist or video URL"
         >
-          <ExternalLink size={12} />
-        </a>
+          <Link size={13} />
+          <span className="text-[10px] uppercase tracking-wider">Link</span>
+        </button>
       </div>
 
-      {/* Direct Native Player */}
-      <div className="w-[300px] h-[170px] rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-xl">
+      {/* Pop-down URL Input Form */}
+      {showUrlInput && (
+        <form
+          onSubmit={handleSaveUrl}
+          className="flex items-center gap-2 w-full px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 shadow-lg text-xs"
+        >
+          <input
+            type="text"
+            value={inputUrl}
+            onChange={(e) => setInputUrl(e.target.value)}
+            placeholder="Paste YouTube or YT Music playlist URL..."
+            className="flex-1 bg-transparent text-white placeholder-neutral-500 outline-none text-xs"
+            autoFocus
+          />
+          <button
+            type="submit"
+            className="p-1 rounded-lg bg-cyan-500 text-neutral-950 font-bold hover:bg-cyan-400 transition-all shrink-0"
+            title="Load URL"
+          >
+            <Check size={14} />
+          </button>
+        </form>
+      )}
+
+      {/* Zero Visual Display: Kept minimally alive off-canvas so Chrome executes the audio thread */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          right: 0,
+          width: '1px',
+          height: '1px',
+          opacity: 0.01,
+          pointerEvents: 'none',
+          zIndex: -9999,
+        }}
+      >
         <iframe
+          key={playlistId}
           ref={iframeRef}
-          className="w-full h-full"
-          src={`https://www.youtube.com/embed?listType=playlist&list=${ORIGINAL_PLAYLIST_ID}&enablejsapi=1&playsinline=1&modestbranding=1&rel=0`}
-          title="Gym Playlist"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
+          width="200"
+          height="200"
+          src={`https://www.youtube.com/embed/videoseries?list=${playlistId}&enablejsapi=1&playsinline=1`}
+          title="Background Gym Audio"
+          allow="autoplay; encrypted-media"
         />
       </div>
     </div>
