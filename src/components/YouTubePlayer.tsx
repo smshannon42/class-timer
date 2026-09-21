@@ -7,14 +7,20 @@ interface YouTubePlayerProps {
   isPlaying: boolean;
 }
 
-const PLAYLIST_ID = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
+const PLAYLIST_ID = 'PLcPtvWDlA89cndyYu1fGI7DdXeMSZLrcu';
 
 export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [manualPlay, setManualPlay] = useState(false);
+  const [originUrl, setOriginUrl] = useState('');
 
-  // Send message directly to YouTube iframe
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOriginUrl(window.location.origin);
+    }
+  }, []);
+
   const sendCommand = (func: string, args: any[] = []) => {
     if (!iframeRef.current?.contentWindow) return;
     iframeRef.current.contentWindow.postMessage(
@@ -23,11 +29,10 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
         func,
         args,
       }),
-      '*'
+      'https://www.youtube.com'
     );
   };
 
-  // Sync Timer workout play/pause to YouTube
   useEffect(() => {
     if (isPlaying) {
       sendCommand('playVideo');
@@ -61,6 +66,10 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
   const handleNext = () => {
     sendCommand('nextVideo');
   };
+
+  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${PLAYLIST_ID}&enablejsapi=1&playsinline=1&modestbranding=1&rel=0${
+    originUrl ? `&origin=${encodeURIComponent(originUrl)}` : ''
+  }`;
 
   return (
     <div className="flex flex-col items-center gap-2 mt-2">
@@ -105,7 +114,7 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
 
         <span className="text-cyan-500/40">|</span>
 
-        {/* Quick Pop-out Link */}
+        {/* Pop-out Direct YouTube Link */}
         <a
           href={`https://music.youtube.com/playlist?list=${PLAYLIST_ID}`}
           target="_blank"
@@ -117,14 +126,15 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
         </a>
       </div>
 
-      {/* Embed Frame (Compact 240x135 - standard 16:9 minimum to prevent YouTube block) */}
-      <div className="w-[240px] h-[135px] rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-lg">
+      {/* Embed Frame with Referrer Policy and Cross-Origin Allowances */}
+      <div className="w-[280px] h-[158px] rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-lg">
         <iframe
           ref={iframeRef}
           className="w-full h-full"
-          src={`https://www.youtube.com/embed/videoseries?list=${PLAYLIST_ID}&enablejsapi=1&playsinline=1&modestbranding=1&rel=0`}
-          title="Class Timer Gym Audio"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          src={embedUrl}
+          title="Gym Playlist Player"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
           allowFullScreen
         />
       </div>
