@@ -7,69 +7,126 @@ interface YouTubePlayerProps {
   isPlaying: boolean;
 }
 
+declare global {
+  interface Window {
+    onYouTubeIframeAPIReady?: () => void;
+    YT?: any;
+  }
+}
+
 const PLAYLIST_ID = 'PLcPtvWDlA89cndyYu1fGI7DdXeMSZLrcu';
 
 export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isReady, setIsReady] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [manualPlay, setManualPlay] = useState(false);
-  const [originUrl, setOriginUrl] = useState('');
+  const playerRef = useRef<any>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setOriginUrl(window.location.origin);
+    if (typeof window === 'undefined') return;
+
+    const setupPlayer = () => {
+      if (!window.YT || !window.YT.Player) return;
+
+      playerRef.current = new window.YT.Player('yt-player-element', {
+        height: '100%',
+        width: '100%',
+        playerVars: {
+          listType: 'playlist',
+          list: PLAYLIST_ID,
+          autoplay: 0,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: (event: any) => {
+            setIsReady(true);
+            try {
+              event.target.setShuffle(true);
+            } catch (e) {
+              console.warn(e);
+            }
+          },
+          onStateChange: (event: any) => {
+            if (event.data === window.YT?.PlayerState?.PLAYING) {
+              setManualPlay(true);
+            } else if (event.data === window.YT?.PlayerState?.PAUSED) {
+              setManualPlay(false);
+            }
+          },
+          onError: (event: any) => {
+            // Auto-skip videos that cannot be embedded (100, 101, 150)
+            console.warn('Skipping unplayable video, code:', event.data);
+            try {
+              event.target.nextVideo();
+            } catch {
+              playerRef.current?.nextVideo();
+            }
+          },
+        },
+      });
+    };
+
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+      window.onYouTubeIframeAPIReady = setupPlayer;
+    } else if (window.YT && window.YT.Player) {
+      setupPlayer();
     }
+
+    return () => {
+      if (playerRef.current?.destroy) {
+        playerRef.current.destroy();
+      }
+    };
   }, []);
 
-  const sendCommand = (func: string, args: any[] = []) => {
-    if (!iframeRef.current?.contentWindow) return;
-    iframeRef.current.contentWindow.postMessage(
-      JSON.stringify({
-        event: 'command',
-        func,
-        args,
-      }),
-      'https://www.youtube.com'
-    );
-  };
-
+  // Sync Timer Play/Pause state to YouTube
   useEffect(() => {
-    if (isPlaying) {
-      sendCommand('playVideo');
-      setManualPlay(true);
-    } else {
-      sendCommand('pauseVideo');
-      setManualPlay(false);
+    if (!isReady || !playerRef.current) return;
+
+    try {
+      if (isPlaying) {
+        playerRef.current.playVideo();
+      } else {
+        playerRef.current.pauseVideo();
+      }
+    } catch (err) {
+      console.warn('Sync error:', err);
     }
-  }, [isPlaying]);
+  }, [isPlaying, isReady]);
 
   const togglePlay = () => {
+    if (!playerRef.current) return;
     if (manualPlay) {
-      sendCommand('pauseVideo');
-      setManualPlay(false);
+      playerRef.current.pauseVideo();
     } else {
-      sendCommand('playVideo');
-      setManualPlay(true);
+      playerRef.current.playVideo();
     }
   };
 
   const toggleMute = () => {
+    if (!playerRef.current) return;
     if (isMuted) {
-      sendCommand('unMute');
+      playerRef.current.unMute();
       setIsMuted(false);
     } else {
-      sendCommand('mute');
+      playerRef.current.mute();
       setIsMuted(true);
     }
   };
 
   const handleNext = () => {
-    sendCommand('nextVideo');
+    if (playerRef.current?.nextVideo) {
+      playerRef.current.nextVideo();
+    }
   };
-
-  const embedUrl = `https://www.youtube.com/embed/videoseries?list=${PLAYLIST_ID}&enablejsapi=1&playsinline=1&modestbranding=1&rel=0${
-    originUrl ? `&origin=${encodeURIComponent(originUrl)}` : ''
-  }`;
 
   return (
     <div className="flex flex-col items-center gap-2 mt-2">
@@ -114,7 +171,7 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
 
         <span className="text-cyan-500/40">|</span>
 
-        {/* Pop-out Direct YouTube Link */}
+        {/* Direct Link */}
         <a
           href={`https://music.youtube.com/playlist?list=${PLAYLIST_ID}`}
           target="_blank"
@@ -126,17 +183,9 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
         </a>
       </div>
 
-      {/* Embed Frame with Referrer Policy and Cross-Origin Allowances */}
+      {/* Embed Frame */}
       <div className="w-[280px] h-[158px] rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-lg">
-        <iframe
-          ref={iframeRef}
-          className="w-full h-full"
-          src={embedUrl}
-          title="Gym Playlist Player"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
+        <div id="yt-player-element" className="w-full h-full" />
       </div>
     </div>
   );
