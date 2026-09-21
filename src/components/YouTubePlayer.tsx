@@ -7,125 +7,59 @@ interface YouTubePlayerProps {
   isPlaying: boolean;
 }
 
-declare global {
-  interface Window {
-    onYouTubeIframeAPIReady?: () => void;
-    YT?: any;
-  }
-}
-
-const PLAYLIST_ID = 'PLcPtvWDlA89cndyYu1fGI7DdXeMSZLrcu';
+const ORIGINAL_PLAYLIST_ID = 'PLcPtvWDlA89dE5FE0FcWty9wav3sn0qyT';
 
 export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
-  const [isReady, setIsReady] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [manualPlay, setManualPlay] = useState(false);
-  const playerRef = useRef<any>(null);
 
+  // Send direct command to iframe
+  const sendCommand = (func: string, args: any[] = []) => {
+    if (!iframeRef.current?.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage(
+      JSON.stringify({
+        event: 'command',
+        func,
+        args,
+      }),
+      '*'
+    );
+  };
+
+  // Sync Timer workout play/pause to YouTube
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const setupPlayer = () => {
-      if (!window.YT || !window.YT.Player) return;
-
-      playerRef.current = new window.YT.Player('yt-player-element', {
-        height: '100%',
-        width: '100%',
-        playerVars: {
-          listType: 'playlist',
-          list: PLAYLIST_ID,
-          autoplay: 0,
-          controls: 1,
-          modestbranding: 1,
-          rel: 0,
-          playsinline: 1,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: (event: any) => {
-            setIsReady(true);
-            try {
-              event.target.setShuffle(true);
-            } catch (e) {
-              console.warn(e);
-            }
-          },
-          onStateChange: (event: any) => {
-            if (event.data === window.YT?.PlayerState?.PLAYING) {
-              setManualPlay(true);
-            } else if (event.data === window.YT?.PlayerState?.PAUSED) {
-              setManualPlay(false);
-            }
-          },
-          onError: (event: any) => {
-            // Auto-skip videos that cannot be embedded (100, 101, 150)
-            console.warn('Skipping unplayable video, code:', event.data);
-            try {
-              event.target.nextVideo();
-            } catch {
-              playerRef.current?.nextVideo();
-            }
-          },
-        },
-      });
-    };
-
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
-      window.onYouTubeIframeAPIReady = setupPlayer;
-    } else if (window.YT && window.YT.Player) {
-      setupPlayer();
+    if (isPlaying) {
+      sendCommand('playVideo');
+      setManualPlay(true);
+    } else {
+      sendCommand('pauseVideo');
+      setManualPlay(false);
     }
-
-    return () => {
-      if (playerRef.current?.destroy) {
-        playerRef.current.destroy();
-      }
-    };
-  }, []);
-
-  // Sync Timer Play/Pause state to YouTube
-  useEffect(() => {
-    if (!isReady || !playerRef.current) return;
-
-    try {
-      if (isPlaying) {
-        playerRef.current.playVideo();
-      } else {
-        playerRef.current.pauseVideo();
-      }
-    } catch (err) {
-      console.warn('Sync error:', err);
-    }
-  }, [isPlaying, isReady]);
+  }, [isPlaying]);
 
   const togglePlay = () => {
-    if (!playerRef.current) return;
     if (manualPlay) {
-      playerRef.current.pauseVideo();
+      sendCommand('pauseVideo');
+      setManualPlay(false);
     } else {
-      playerRef.current.playVideo();
+      sendCommand('playVideo');
+      setManualPlay(true);
     }
   };
 
   const toggleMute = () => {
-    if (!playerRef.current) return;
     if (isMuted) {
-      playerRef.current.unMute();
+      sendCommand('unMute');
       setIsMuted(false);
     } else {
-      playerRef.current.mute();
+      sendCommand('mute');
       setIsMuted(true);
     }
   };
 
   const handleNext = () => {
-    if (playerRef.current?.nextVideo) {
-      playerRef.current.nextVideo();
-    }
+    sendCommand('nextVideo');
   };
 
   return (
@@ -171,21 +105,28 @@ export default function YouTubePlayer({ isPlaying }: YouTubePlayerProps) {
 
         <span className="text-cyan-500/40">|</span>
 
-        {/* Direct Link */}
+        {/* Pop-out Link */}
         <a
-          href={`https://music.youtube.com/playlist?list=${PLAYLIST_ID}`}
+          href={`https://music.youtube.com/playlist?list=${ORIGINAL_PLAYLIST_ID}`}
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-white transition-colors p-0.5"
-          title="Open in YouTube Music"
+          title="Open Playlist in YouTube Music"
         >
           <ExternalLink size={12} />
         </a>
       </div>
 
-      {/* Embed Frame */}
-      <div className="w-[280px] h-[158px] rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-lg">
-        <div id="yt-player-element" className="w-full h-full" />
+      {/* Direct Native Player */}
+      <div className="w-[300px] h-[170px] rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-xl">
+        <iframe
+          ref={iframeRef}
+          className="w-full h-full"
+          src={`https://www.youtube.com/embed?listType=playlist&list=${ORIGINAL_PLAYLIST_ID}&enablejsapi=1&playsinline=1&modestbranding=1&rel=0`}
+          title="Gym Playlist"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
       </div>
     </div>
   );
