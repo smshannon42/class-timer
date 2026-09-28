@@ -105,7 +105,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // Flash state handler
+  // Confined flash state handler for inside-circle illumination
   useEffect(() => {
     const prev = prevPhaseRef.current;
     
@@ -163,7 +163,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
     if (isActive) {
       timer = setInterval(() => {
-        // Pip tone on 2 and 1 seconds remaining
         if (mode !== 'FOR_TIME') {
           if (secondsRemaining === 3 || secondsRemaining === 2) {
             soundEngine.playPipCountdown();
@@ -368,6 +367,15 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setIsActive(false);
   };
 
+  const toggleStartPause = () => {
+    if (isProjectorView) return;
+    if (isActive) {
+      handlePause();
+    } else {
+      handleStart();
+    }
+  };
+
   const handleReset = () => {
     setIsActive(false);
     setEnginePhase('IDLE');
@@ -469,8 +477,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
       if (e.code === 'Space') {
         e.preventDefault();
-        if (isActive) handlePause();
-        else handleStart();
+        toggleStartPause();
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleReset();
@@ -622,19 +629,13 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   const progress = getProgressPercentage();
-  const radius = 230;
+  const radius = 240;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
+  // Clean, consistent backdrop outside the circle timer
   const getAmbientGlowClass = (): string => {
-    if (enginePhase === 'FINISHED') return 'bg-rose-950/30 border-rose-900/40';
-    if (isResting) {
-      return 'bg-amber-950/25 border-amber-900/40';
-    }
-    if (enginePhase === 'RUNNING') {
-      return 'bg-emerald-950/20 border-emerald-900/30';
-    }
-    return 'bg-neutral-950/60 border-neutral-900';
+    return 'bg-neutral-950/80 border-neutral-900';
   };
 
   const getRingColorClass = (): string => {
@@ -648,21 +649,13 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   const getTimerTextColorClass = (): string => {
     if (enginePhase === 'PREP_7') return 'text-amber-400 animate-pulse';
-    if (isResting) return 'text-amber-400 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]';
-    if (showRedCountdown) return 'text-rose-500 drop-shadow-[0_0_30px_rgba(244,63,94,0.5)]';
+    if (isResting) return 'text-amber-400 drop-shadow-[0_0_35px_rgba(251,191,36,0.6)]';
+    if (showRedCountdown) return 'text-rose-500 drop-shadow-[0_0_35px_rgba(244,63,94,0.6)]';
     return 'text-white drop-shadow-2xl';
   };
 
   return (
-    <div className={`relative flex flex-col items-center justify-center w-full transition-colors duration-700 rounded-3xl p-4 border ${getAmbientGlowClass()} ${isProjectorView ? 'min-h-[85vh]' : ''}`}>
-      {/* Rest / Finish Screen Flash Overlay */}
-      {flashType === 'REST' && (
-        <div className="absolute inset-0 z-50 pointer-events-none rounded-3xl bg-amber-400/40 animate-out fade-out duration-500" />
-      )}
-      {flashType === 'FINISH' && (
-        <div className="absolute inset-0 z-50 pointer-events-none rounded-3xl bg-rose-600/40 animate-out fade-out duration-700" />
-      )}
-
+    <div className={`relative flex flex-col items-center justify-center w-full rounded-3xl p-4 border transition-colors ${getAmbientGlowClass()} ${isProjectorView ? 'min-h-[92vh]' : ''}`}>
       {/* Controller Mode Switchers & Steppers: Hidden while running */}
       {!isProjectorView && !isActive && (
         <div className="flex flex-col items-center gap-3 mb-4 w-full animate-in fade-in duration-300">
@@ -830,7 +823,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <button type="button" onClick={() => adjustAmrapRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95">
                     <Minus size={14} />
                   </button>
-                  <input type="range" min="1" max="12" step="1" value={amrapRounds} onChange={(e) => setAmrapRounds(Number(e.target.value))} className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
+                  <input type="range" min="1" max="12" step="1" value={amrapRounds} onChange={(e) => setEmomRounds(Number(e.target.value))} className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
                   <button type="button" onClick={() => adjustAmrapRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95">
                     <Plus size={14} />
                   </button>
@@ -881,7 +874,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       {/* Active Phase Pill */}
       <div className="flex items-center gap-3 mb-2">
         {mode === 'DYNAMIC' && (
-          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
             {enginePhase === 'PREP_7'
               ? 'PREP (7s)'
               : dynamicSubMode === 'RUN' && enginePhase === 'RUNNING'
@@ -892,24 +885,24 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           </span>
         )}
         {mode === 'TABATA' && (
-          <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${
+          <span className={`px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase ${
             isWorkPhase ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
           }`}>
             {enginePhase === 'PREP_7' ? 'PREP (7s)' : isWorkPhase ? `WORK - ROUND ${currentRound}` : `REST - ROUND ${currentRound}`}
           </span>
         )}
         {mode === 'EMOM' && (
-          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
             {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}`}
           </span>
         )}
         {mode === 'AMRAP' && (
-          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
+          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
             {enginePhase === 'PREP_7' ? 'PREP (7s)' : `AMRAP (${formatIntervalLabel(amrapDuration)})`}
           </span>
         )}
         {mode === 'FOR_TIME' && (
-          <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
             {enginePhase === 'PREP_7' ? 'PREP (7s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
           </span>
         )}
@@ -918,29 +911,30 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       {/* Clean Horizontal Round Counter Bar Positioned Above Clock */}
       {roundInfo.hasRounds && (
         <div
-          onClick={() => {
+          onClick={(e) => {
             if (mode === 'AMRAP' && !isProjectorView) {
+              e.stopPropagation();
               setCurrentRound((r) => r + 1);
             }
           }}
-          className={`flex items-center justify-center gap-3.5 px-5 py-2.5 my-2 bg-neutral-900/90 border border-neutral-800/80 rounded-2xl shadow-lg backdrop-blur-md transition-all ${
+          className={`flex items-center justify-center gap-3.5 px-6 py-2.5 my-2 bg-neutral-900/90 border border-neutral-800/80 rounded-2xl shadow-lg backdrop-blur-md transition-all ${
             mode === 'AMRAP' ? 'cursor-pointer hover:border-fuchsia-500/50 active:scale-95' : ''
           }`}
           title={mode === 'AMRAP' ? 'Click to log +1 completed round' : undefined}
         >
           {/* Active Round Fraction */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-black uppercase tracking-wider text-neutral-400">Round</span>
+            <span className="text-xs md:text-sm font-black uppercase tracking-wider text-neutral-400">Round</span>
             <div className="flex items-baseline font-mono">
-              <span className="text-lg font-black text-cyan-400">{roundInfo.active}</span>
-              <span className="text-xs font-bold text-neutral-500">/{roundInfo.total}</span>
+              <span className="text-xl md:text-2xl font-black text-cyan-400">{roundInfo.active}</span>
+              <span className="text-sm md:text-base font-bold text-neutral-500">/{roundInfo.total}</span>
             </div>
           </div>
 
           <span className="text-neutral-800">|</span>
 
           {/* Remaining Badge */}
-          <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 font-mono">
+          <span className="text-xs md:text-sm font-black uppercase tracking-wider text-amber-400 font-mono">
             {mode === 'AMRAP' ? '+1 LOG SCORE' : roundInfo.remaining === 0 ? 'FINAL ROUND' : `${roundInfo.remaining} LEFT`}
           </span>
 
@@ -954,12 +948,12 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
               return (
                 <div
                   key={roundNum}
-                  className={`h-2 rounded-full transition-all duration-300 ${
+                  className={`h-2.5 rounded-full transition-all duration-300 ${
                     isCurrent
-                      ? 'w-5 bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)]'
+                      ? 'w-6 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]'
                       : isDone
-                      ? 'w-2 bg-emerald-500/80'
-                      : 'w-2 bg-neutral-800'
+                      ? 'w-2.5 bg-emerald-500/80'
+                      : 'w-2.5 bg-neutral-800'
                   }`}
                   title={`Round ${roundNum}`}
                 />
@@ -969,29 +963,45 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* Dead-Centered Clock Display with Halo Ring */}
-      <div className={`relative flex items-center justify-center my-4 ${
-        isProjectorView 
-          ? 'w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] md:w-[700px] md:h-[700px]' 
-          : 'w-[340px] h-[340px] sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px]'
-      }`}>
+      {/* Dead-Centered Clock Display with Halo Ring & Interior Flash */}
+      <div
+        onClick={toggleStartPause}
+        role="button"
+        tabIndex={0}
+        aria-label={isActive ? 'Pause timer' : 'Start timer'}
+        className={`relative flex items-center justify-center my-4 cursor-pointer select-none active:scale-[0.985] transition-transform duration-150 ${
+          isProjectorView 
+            ? 'w-[520px] h-[520px] sm:w-[680px] sm:h-[680px] md:w-[840px] md:h-[840px] lg:w-[940px] lg:h-[940px]' 
+            : 'w-[360px] h-[360px] sm:w-[480px] sm:h-[480px] md:w-[560px] md:h-[560px]'
+        }`}
+      >
+        {/* Confined Circular Flash ONLY inside the timer circle */}
+        <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none z-0">
+          {flashType === 'REST' && (
+            <div className="w-full h-full bg-amber-400/40 animate-out fade-out duration-500" />
+          )}
+          {flashType === 'FINISH' && (
+            <div className="w-full h-full bg-rose-600/50 animate-out fade-out duration-700" />
+          )}
+        </div>
+
         {/* Glowing Progress Ring Halo */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md" viewBox="0 0 500 500">
+        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md z-10" viewBox="0 0 520 520">
           <circle
-            cx="250"
-            cy="250"
+            cx="260"
+            cy="260"
             r={radius}
             fill="transparent"
             stroke="currentColor"
-            strokeWidth="12"
-            className="text-neutral-900/80"
+            strokeWidth="14"
+            className="text-neutral-900/90"
           />
           <circle
-            cx="250"
-            cy="250"
+            cx="260"
+            cy="260"
             r={radius}
             fill="transparent"
-            strokeWidth="14"
+            strokeWidth="16"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
@@ -999,11 +1009,11 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           />
         </svg>
 
-        {/* Large Digits */}
-        <div className={`relative z-10 font-black tracking-tighter select-none font-mono transition-colors duration-300 ${
+        {/* Doubled Workout Timer Text Size */}
+        <div className={`relative z-20 font-black tracking-tight select-none font-mono transition-colors duration-300 pointer-events-none ${
           isProjectorView 
-            ? 'text-[12rem] sm:text-[16rem] md:text-[22rem]' 
-            : 'text-8xl sm:text-9xl md:text-[10.5rem]'
+            ? 'text-[15rem] sm:text-[20rem] md:text-[26rem] lg:text-[32rem]' 
+            : 'text-8xl sm:text-[10.5rem] md:text-[13rem]'
         } ${getTimerTextColorClass()}`}>
           {formatDisplayTime(secondsRemaining)}
         </div>
@@ -1011,7 +1021,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
       {/* Controller Buttons */}
       {!isProjectorView && (
-        <div className="flex items-center gap-4 mt-2 z-10">
+        <div className="flex items-center gap-4 mt-2 z-20">
           <button
             onClick={isActive ? handlePause : handleStart}
             className={`p-6 rounded-3xl font-black flex items-center gap-2 transition-all shadow-xl active:scale-95 ${
