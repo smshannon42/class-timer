@@ -477,6 +477,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     return s === 0 ? `${m}m` : `${m}m ${s}s`;
   };
 
+  // Check if currently resting
+  const isRestPhaseActive = (): boolean => {
+    if (enginePhase === 'POST_REST_60') return true;
+    if (mode === 'TABATA' && enginePhase === 'RUNNING' && !isWorkPhase) return true;
+    return false;
+  };
+
+  // Determine if we are in the last 10 seconds of WORK (never during rest/prep)
   const isWorkTenSecondsLeft = (): boolean => {
     if (enginePhase !== 'RUNNING') return false;
 
@@ -499,6 +507,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     return false;
   };
 
+  const isResting = isRestPhaseActive();
   const showRedCountdown = isWorkTenSecondsLeft();
 
   // Progress Ring Calculation
@@ -528,14 +537,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   const progress = getProgressPercentage();
-  const radius = 175;
+  const radius = 230;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   // Dynamic Background Glow Color
   const getAmbientGlowClass = (): string => {
     if (enginePhase === 'FINISHED') return 'bg-rose-950/30 border-rose-900/40';
-    if (enginePhase === 'POST_REST_60' || (mode === 'TABATA' && enginePhase === 'RUNNING' && !isWorkPhase)) {
+    if (isResting) {
       return 'bg-amber-950/25 border-amber-900/40';
     }
     if (enginePhase === 'RUNNING') {
@@ -547,12 +556,19 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   // Ring Color
   const getRingColorClass = (): string => {
     if (showRedCountdown) return 'stroke-rose-500 shadow-rose-500';
-    if (enginePhase === 'PREP_7') return 'stroke-amber-400';
-    if (enginePhase === 'POST_REST_60' || (mode === 'TABATA' && enginePhase === 'RUNNING' && !isWorkPhase)) {
+    if (enginePhase === 'PREP_7' || isResting) {
       return 'stroke-amber-400';
     }
     if (enginePhase === 'RUNNING') return 'stroke-emerald-400';
     return 'stroke-cyan-500';
+  };
+
+  // Digits Color logic
+  const getTimerTextColorClass = (): string => {
+    if (enginePhase === 'PREP_7') return 'text-amber-400 animate-pulse';
+    if (isResting) return 'text-amber-400 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]';
+    if (showRedCountdown) return 'text-rose-500 drop-shadow-[0_0_30px_rgba(244,63,94,0.5)]';
+    return 'text-white drop-shadow-2xl';
   };
 
   return (
@@ -565,7 +581,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         <div className="absolute inset-0 z-50 pointer-events-none rounded-3xl bg-rose-600/40 animate-out fade-out duration-700" />
       )}
 
-      {/* Controller Mode Switchers & Steppers: Surgically hidden while running */}
+      {/* Controller Mode Switchers & Steppers: Hidden while running */}
       {!isProjectorView && !isActive && (
         <div className="flex flex-col items-center gap-3 mb-4 w-full animate-in fade-in duration-300">
           {/* Mode Switcher */}
@@ -817,25 +833,29 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         )}
       </div>
 
-      {/* Main Countdown Display with SVG Circular Border Halo */}
-      <div className="relative flex items-center justify-center my-6 w-[320px] h-[320px] sm:w-[390px] sm:h-[390px]">
+      {/* Main Large Countdown Display with Expanded Circular Border Halo */}
+      <div className={`relative flex items-center justify-center my-4 ${
+        isProjectorView 
+          ? 'w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] md:w-[700px] md:h-[700px]' 
+          : 'w-[360px] h-[360px] sm:w-[440px] sm:h-[440px] md:w-[500px] md:h-[500px]'
+      }`}>
         {/* Glowing Progress Ring Halo */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md" viewBox="0 0 390 390">
+        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md" viewBox="0 0 500 500">
           <circle
-            cx="195"
-            cy="195"
+            cx="250"
+            cy="250"
             r={radius}
             fill="transparent"
             stroke="currentColor"
-            strokeWidth="10"
+            strokeWidth="12"
             className="text-neutral-900/80"
           />
           <circle
-            cx="195"
-            cy="195"
+            cx="250"
+            cy="250"
             r={radius}
             fill="transparent"
-            strokeWidth="12"
+            strokeWidth="14"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
@@ -843,16 +863,12 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           />
         </svg>
 
-        {/* Central Digits */}
+        {/* Scaled Digits */}
         <div className={`relative z-10 font-black tracking-tighter select-none font-mono transition-colors duration-300 ${
-          isProjectorView ? 'text-8xl sm:text-[10rem]' : 'text-7xl sm:text-8xl'
-        } ${
-          enginePhase === 'PREP_7'
-            ? 'text-amber-400 animate-pulse'
-            : showRedCountdown
-            ? 'text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.45)]'
-            : 'text-white drop-shadow-2xl'
-        }`}>
+          isProjectorView 
+            ? 'text-[12rem] sm:text-[16rem] md:text-[22rem]' 
+            : 'text-8xl sm:text-9xl md:text-[11rem]'
+        } ${getTimerTextColorClass()}`}>
           {formatDisplayTime(secondsRemaining)}
         </div>
       </div>
