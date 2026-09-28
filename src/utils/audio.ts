@@ -1,8 +1,7 @@
 class SoundEngine {
   private ctx: AudioContext | null = null;
   public isMuted: boolean = false;
-  public soundType: 'SYNTH' | 'WHISTLE' = 'WHISTLE';
-  public speechEnabled: boolean = true;
+  public soundType: 'WHISTLE' | 'SYNTH' = 'WHISTLE';
 
   private initCtx() {
     if (!this.ctx && typeof window !== 'undefined') {
@@ -21,19 +20,7 @@ class SoundEngine {
     return this.isMuted;
   }
 
-  speak(text: string) {
-    if (this.isMuted || !this.speechEnabled || typeof window === 'undefined') return;
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.15;
-      utterance.pitch = 1.0;
-      utterance.volume = 0.9;
-      window.speechSynthesis.speak(utterance);
-    }
-  }
-
-  // Crisp pip tone on seconds 2 and 1
+  // Crisp pip tone on countdown seconds 2 and 1
   playPipCountdown() {
     if (this.isMuted) return;
     this.initCtx();
@@ -44,7 +31,7 @@ class SoundEngine {
       const gain = this.ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, this.ctx.currentTime); // A5 tone
+      osc.frequency.setValueAtTime(880, this.ctx.currentTime); // A5
 
       gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
@@ -63,7 +50,7 @@ class SoundEngine {
     this.playPipCountdown();
   }
 
-  // Dual-frequency referee whistle blast simulation (Fox 40 style)
+  // Dual-frequency sports whistle blast for Work Go
   playWhistle() {
     this.initCtx();
     if (!this.ctx) return;
@@ -77,7 +64,6 @@ class SoundEngine {
       osc1.type = 'triangle';
       osc2.type = 'sine';
 
-      // Trill frequencies characteristic of pea-less sports whistle
       osc1.frequency.setValueAtTime(2800, now);
       osc2.frequency.setValueAtTime(3100, now);
 
@@ -97,7 +83,7 @@ class SoundEngine {
     }
   }
 
-  // Work Go cue
+  // Work Go cue on 0
   playWorkGo() {
     if (this.isMuted) return;
     if (this.soundType === 'WHISTLE') {
@@ -126,41 +112,42 @@ class SoundEngine {
         console.warn('Audio playback error', e);
       }
     }
-
-    this.speak('Work');
   }
 
-  // Rest cue
+  // 1-Second Classic Arena / Gym Buzzer when Work is done (Rest or Finish)
   playRest() {
     if (this.isMuted) return;
-    if (this.soundType === 'WHISTLE') {
-      this.playWhistle();
-    } else {
-      this.initCtx();
-      if (!this.ctx) return;
-      try {
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
+    this.initCtx();
+    if (!this.ctx) return;
 
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(659.25, now); // E5
-        osc.frequency.exponentialRampToValueAtTime(329.63, now + 0.35); // Slur to E4
+    try {
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
 
-        gain.gain.setValueAtTime(0.35, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      // Classic low-frequency gritty sports buzzer
+      osc1.type = 'sawtooth';
+      osc2.type = 'square';
 
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
+      osc1.frequency.setValueAtTime(155, now);
+      osc2.frequency.setValueAtTime(160, now); // Slight detune creates the authentic gym horn buzz
 
-        osc.start(now);
-        osc.stop(now + 0.5);
-      } catch (e) {
-        console.warn('Audio playback error', e);
-      }
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.setValueAtTime(0.4, now + 0.85); // Sustain for ~0.85s
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0); // Clean fade out at exactly 1.0s
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 1.0);
+      osc2.stop(now + 1.0);
+    } catch (e) {
+      console.warn('Audio playback error', e);
     }
-
-    this.speak('Rest');
   }
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, FastForward, Timer, Plus, Minus, Maximize, Minimize, Volume2, Mic } from 'lucide-react';
+import { Play, Pause, RotateCcw, FastForward, Timer, Plus, Minus, Maximize, Minimize, Volume2 } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
 
 interface WorkoutEngineProps {
@@ -14,9 +14,8 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [mode, setMode] = useState<'WARM_UP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME'>('WARM_UP');
   const [enablePrep, setEnablePrep] = useState<boolean>(false);
 
-  // Sound and voice states
+  // Sound Mode (Whistle vs Synth) and Fullscreen
   const [soundMode, setSoundMode] = useState<'WHISTLE' | 'SYNTH'>('WHISTLE');
-  const [voiceCues, setVoiceCues] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Warm-Up
@@ -118,7 +117,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     
     if (enginePhase === 'FINISHED' && prev.phase !== 'FINISHED') {
       setFlashType('FINISH');
-      soundEngine.speak('Workout Complete');
       const timer = setTimeout(() => setFlashType(null), 650);
       prevPhaseRef.current = { phase: enginePhase, isWork: isWorkPhase };
       return () => clearTimeout(timer);
@@ -195,7 +193,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         if (mode === 'WARM_UP') {
           setSecondsRemaining((prev) => {
             if (prev > 1) return prev - 1;
-            soundEngine.playRest();
+            soundEngine.playRest(); // 1-second gym buzzer
             setEnginePhase('FINISHED');
             setIsActive(false);
             return 0;
@@ -210,24 +208,24 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   setCurrentRound((r) => r + 1);
                   return tabataWork;
                 } else {
-                  soundEngine.playRest();
+                  soundEngine.playRest(); // 1-second gym buzzer
                   setEnginePhase('FINISHED');
                   setIsActive(false);
                   return 0;
                 }
               } else {
-                soundEngine.playRest();
+                soundEngine.playRest(); // 1-second gym buzzer
                 setIsWorkPhase(false);
                 return tabataRest;
               }
             } else {
               if (currentRound < tabataRounds) {
-                soundEngine.playWorkGo();
+                soundEngine.playWorkGo(); // Work whistle
                 setCurrentRound((r) => r + 1);
                 setIsWorkPhase(true);
                 return tabataWork;
               } else {
-                soundEngine.playRest();
+                soundEngine.playRest(); // 1-second gym buzzer
                 setEnginePhase('FINISHED');
                 setIsActive(false);
                 return 0;
@@ -412,7 +410,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     }
   };
 
-  // 1-Tap Preset Loaders
   const loadPreset = (preset: 'TABATA_STD' | 'SPRINT_INTERVALS' | 'EMOM_8' | 'AMRAP_5' | 'WARMUP_3') => {
     handleReset();
     if (preset === 'TABATA_STD') {
@@ -557,7 +554,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   const roundInfo = getRoundInfo();
 
-  // Next Up Sub-Badge Prediction
   const getNextUpLabel = (): string => {
     if (enginePhase === 'PREP_7') {
       return mode === 'WARM_UP' ? 'NEXT: WARM-UP' : mode === 'TABATA' ? `NEXT: WORK (${tabataWork}s)` : 'NEXT: WORK';
@@ -634,7 +630,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   const progress = getProgressPercentage();
-  // Way bigger circle radius: 455 on 1000x1000 canvas gives 910px diameter with ample numeral breathing room
   const radius = 455;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
@@ -662,35 +657,18 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       {/* Top Utility Header Bar */}
       {!isProjectorView && (
         <div className="flex items-center justify-between w-full max-w-4xl px-2 mb-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const next = soundMode === 'WHISTLE' ? 'SYNTH' : 'WHISTLE';
-                soundEngine.soundType = next;
-                setSoundMode(next);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white"
-              title="Toggle Whistle / Tone Chime"
-            >
-              <Volume2 size={13} className="text-cyan-400" />
-              <span>{soundMode}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const next = !voiceCues;
-                soundEngine.speechEnabled = next;
-                setVoiceCues(next);
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border transition-all ${
-                voiceCues ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'bg-neutral-900 border-neutral-800 text-neutral-500'
-              }`}
-              title="Toggle Voice Announcements"
-            >
-              <Mic size={13} />
-              <span>VOICE: {voiceCues ? 'ON' : 'OFF'}</span>
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              const next = soundMode === 'WHISTLE' ? 'SYNTH' : 'WHISTLE';
+              soundEngine.soundType = next;
+              setSoundMode(next);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white"
+            title="Toggle Work Tone: Whistle vs Synth"
+          >
+            <Volume2 size={13} className="text-cyan-400" />
+            <span>SOUND: {soundMode}</span>
+          </button>
 
           <button
             onClick={toggleFullScreen}
@@ -1002,7 +980,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           {flashType === 'FINISH' && <div className="w-full h-full bg-rose-600/50 animate-out fade-out duration-700" />}
         </div>
 
-        {/* 1000x1000 SVG Canvas with 455 Radius Halo for complete numeral clearance */}
+        {/* 1000x1000 SVG Canvas with 455 Radius Halo */}
         <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md z-10" viewBox="0 0 1000 1000">
           <circle
             cx="500"
