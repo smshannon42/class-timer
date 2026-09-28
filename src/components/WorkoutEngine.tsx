@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, FastForward, Timer, Plus, Minus, Maximize, Minimize, Volume2 } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
+import { mediaBridge } from '@/utils/mediaSessionBridge';
 
 interface WorkoutEngineProps {
   onBroadcast?: (state: any) => void;
@@ -193,7 +194,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         if (mode === 'WARM_UP') {
           setSecondsRemaining((prev) => {
             if (prev > 1) return prev - 1;
-            soundEngine.playRest(); // 1-second gym buzzer
+            soundEngine.playRest();
             setEnginePhase('FINISHED');
             setIsActive(false);
             return 0;
@@ -208,24 +209,24 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   setCurrentRound((r) => r + 1);
                   return tabataWork;
                 } else {
-                  soundEngine.playRest(); // 1-second gym buzzer
+                  soundEngine.playRest();
                   setEnginePhase('FINISHED');
                   setIsActive(false);
                   return 0;
                 }
               } else {
-                soundEngine.playRest(); // 1-second gym buzzer
+                soundEngine.playRest();
                 setIsWorkPhase(false);
                 return tabataRest;
               }
             } else {
               if (currentRound < tabataRounds) {
-                soundEngine.playWorkGo(); // Work whistle
+                soundEngine.playWorkGo();
                 setCurrentRound((r) => r + 1);
                 setIsWorkPhase(true);
                 return tabataWork;
               } else {
-                soundEngine.playRest(); // 1-second gym buzzer
+                soundEngine.playRest();
                 setEnginePhase('FINISHED');
                 setIsActive(false);
                 return 0;
@@ -312,6 +313,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   ]);
 
   const handleStart = () => {
+    mediaBridge.armAudio();
     if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') {
       if (enablePrep) {
         setEnginePhase('PREP_7');
@@ -409,6 +411,21 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       }
     }
   };
+
+  // Wire Garmin Fenix 5 Bluetooth AVRCP Commands directly to workout timer
+  useEffect(() => {
+    if (isProjectorView) return;
+
+    const roundText = mode === 'TABATA' ? `Tabata Rd ${currentRound}/${tabataRounds}` : mode.replace('_', ' ');
+
+    mediaBridge.setupHandlers({
+      onTogglePlayPause: () => toggleStartPause(),
+      onSkip: () => handleSkip(),
+      onReset: () => handleReset(),
+      title: `${mode.replace('_', ' ')}: ${formatDisplayTime(secondsRemaining)}`,
+      artist: roundText,
+    });
+  }, [isActive, secondsRemaining, mode, currentRound, tabataRounds, isProjectorView]);
 
   const loadPreset = (preset: 'TABATA_STD' | 'SPRINT_INTERVALS' | 'EMOM_8' | 'AMRAP_5' | 'WARMUP_3') => {
     handleReset();
