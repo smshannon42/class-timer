@@ -78,11 +78,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // Trigger flash on Rest or Finish transition only
   useEffect(() => {
     const prev = prevPhaseRef.current;
     
-    // Check if transitioned to finish
     if (enginePhase === 'FINISHED' && prev.phase !== 'FINISHED') {
       setFlashType('FINISH');
       const timer = setTimeout(() => setFlashType(null), 650);
@@ -90,7 +88,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       return () => clearTimeout(timer);
     }
 
-    // Check if transitioned to rest (DYNAMIC cool-down or TABATA rest)
     const isNowRest = enginePhase === 'POST_REST_60' || (mode === 'TABATA' && enginePhase === 'RUNNING' && !isWorkPhase);
     const wasRest = prev.phase === 'POST_REST_60' || (prev.phase === 'RUNNING' && !prev.isWork);
 
@@ -477,14 +474,36 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     return s === 0 ? `${m}m` : `${m}m ${s}s`;
   };
 
-  // Check if currently resting
+  // Determine current active and total rounds across all modes
+  const getRoundInfo = () => {
+    if (mode === 'DYNAMIC') {
+      const active = dynamicSubMode === 'RUN' ? 1 : currentStretchRound;
+      const total = stretchRounds;
+      return { active, total, remaining: Math.max(0, total - active), hasRounds: dynamicSubMode === 'STRETCH' };
+    }
+    if (mode === 'TABATA') {
+      return { active: currentRound, total: tabataRounds, remaining: Math.max(0, tabataRounds - currentRound), hasRounds: true };
+    }
+    if (mode === 'EMOM') {
+      return { active: currentRound, total: emomRounds, remaining: Math.max(0, emomRounds - currentRound), hasRounds: true };
+    }
+    if (mode === 'AMRAP') {
+      return { active: currentRound, total: amrapRounds, remaining: Math.max(0, amrapRounds - currentRound), hasRounds: true };
+    }
+    if (mode === 'FOR_TIME') {
+      return { active: currentRound, total: forTimeRounds, remaining: Math.max(0, forTimeRounds - currentRound), hasRounds: true };
+    }
+    return { active: 1, total: 8, remaining: 7, hasRounds: true };
+  };
+
+  const roundInfo = getRoundInfo();
+
   const isRestPhaseActive = (): boolean => {
     if (enginePhase === 'POST_REST_60') return true;
     if (mode === 'TABATA' && enginePhase === 'RUNNING' && !isWorkPhase) return true;
     return false;
   };
 
-  // Determine if we are in the last 10 seconds of WORK (never during rest/prep)
   const isWorkTenSecondsLeft = (): boolean => {
     if (enginePhase !== 'RUNNING') return false;
 
@@ -510,7 +529,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const isResting = isRestPhaseActive();
   const showRedCountdown = isWorkTenSecondsLeft();
 
-  // Progress Ring Calculation
   const getProgressPercentage = (): number => {
     if (enginePhase === 'IDLE' || enginePhase === 'FINISHED') return 100;
     if (enginePhase === 'PREP_7') return (secondsRemaining / 7) * 100;
@@ -541,7 +559,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
-  // Dynamic Background Glow Color
   const getAmbientGlowClass = (): string => {
     if (enginePhase === 'FINISHED') return 'bg-rose-950/30 border-rose-900/40';
     if (isResting) {
@@ -553,7 +570,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     return 'bg-neutral-950/60 border-neutral-900';
   };
 
-  // Ring Color
   const getRingColorClass = (): string => {
     if (showRedCountdown) return 'stroke-rose-500 shadow-rose-500';
     if (enginePhase === 'PREP_7' || isResting) {
@@ -563,7 +579,6 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     return 'stroke-cyan-500';
   };
 
-  // Digits Color logic
   const getTimerTextColorClass = (): string => {
     if (enginePhase === 'PREP_7') return 'text-amber-400 animate-pulse';
     if (isResting) return 'text-amber-400 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)]';
@@ -813,64 +828,110 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${
             isWorkPhase ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
           }`}>
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : isWorkPhase ? `WORK - ${currentRound}/${tabataRounds}` : `REST - ${currentRound}/${tabataRounds}`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : isWorkPhase ? `WORK - ROUND ${currentRound}` : `REST - ROUND ${currentRound}`}
           </span>
         )}
         {mode === 'EMOM' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}/${emomRounds}`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}`}
           </span>
         )}
         {mode === 'AMRAP' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}/${amrapRounds} (${formatIntervalLabel(amrapDuration)})`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `AMRAP (${formatIntervalLabel(amrapDuration)})`}
           </span>
         )}
         {mode === 'FOR_TIME' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}/${forTimeRounds} (${formatIntervalLabel(forTimeCap)})`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
           </span>
         )}
       </div>
 
-      {/* Main Large Countdown Display with Expanded Circular Border Halo */}
-      <div className={`relative flex items-center justify-center my-4 ${
-        isProjectorView 
-          ? 'w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] md:w-[700px] md:h-[700px]' 
-          : 'w-[360px] h-[360px] sm:w-[440px] sm:h-[440px] md:w-[500px] md:h-[500px]'
-      }`}>
-        {/* Glowing Progress Ring Halo */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md" viewBox="0 0 500 500">
-          <circle
-            cx="250"
-            cy="250"
-            r={radius}
-            fill="transparent"
-            stroke="currentColor"
-            strokeWidth="12"
-            className="text-neutral-900/80"
-          />
-          <circle
-            cx="250"
-            cy="250"
-            r={radius}
-            fill="transparent"
-            strokeWidth="14"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            className={`transition-all duration-1000 ease-linear ${getRingColorClass()}`}
-          />
-        </svg>
-
-        {/* Scaled Digits */}
-        <div className={`relative z-10 font-black tracking-tighter select-none font-mono transition-colors duration-300 ${
+      {/* Main Clock Stage + Side Round Counter Gauge */}
+      <div className="relative flex flex-col md:flex-row items-center justify-center gap-6 my-4 w-full">
+        {/* Main Countdown Display with Halo */}
+        <div className={`relative flex items-center justify-center ${
           isProjectorView 
-            ? 'text-[12rem] sm:text-[16rem] md:text-[22rem]' 
-            : 'text-8xl sm:text-9xl md:text-[11rem]'
-        } ${getTimerTextColorClass()}`}>
-          {formatDisplayTime(secondsRemaining)}
+            ? 'w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] md:w-[700px] md:h-[700px]' 
+            : 'w-[340px] h-[340px] sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px]'
+        }`}>
+          {/* Glowing Progress Ring Halo */}
+          <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md" viewBox="0 0 500 500">
+            <circle
+              cx="250"
+              cy="250"
+              r={radius}
+              fill="transparent"
+              stroke="currentColor"
+              strokeWidth="12"
+              className="text-neutral-900/80"
+            />
+            <circle
+              cx="250"
+              cy="250"
+              r={radius}
+              fill="transparent"
+              strokeWidth="14"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className={`transition-all duration-1000 ease-linear ${getRingColorClass()}`}
+            />
+          </svg>
+
+          {/* Large Digits */}
+          <div className={`relative z-10 font-black tracking-tighter select-none font-mono transition-colors duration-300 ${
+            isProjectorView 
+              ? 'text-[12rem] sm:text-[16rem] md:text-[22rem]' 
+              : 'text-8xl sm:text-9xl md:text-[10.5rem]'
+          } ${getTimerTextColorClass()}`}>
+            {formatDisplayTime(secondsRemaining)}
+          </div>
         </div>
+
+        {/* Surgical Side Round Counter (Active while running or idle) */}
+        {roundInfo.hasRounds && (
+          <div className="flex flex-row md:flex-col items-center justify-center gap-3 bg-neutral-900/90 border border-neutral-800/80 rounded-3xl p-4 sm:p-5 shadow-2xl backdrop-blur-md md:min-w-[140px]">
+            <div className="flex flex-col items-center">
+              <span className="text-[11px] font-black uppercase tracking-widest text-neutral-400">Round</span>
+              <div className="flex items-baseline gap-1 my-0.5">
+                <span className="text-4xl sm:text-5xl font-black font-mono text-cyan-400">{roundInfo.active}</span>
+                <span className="text-lg sm:text-xl font-bold font-mono text-neutral-500">/{roundInfo.total}</span>
+              </div>
+            </div>
+
+            {/* Rounds Remaining Pill */}
+            <div className="px-3 py-1 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-center text-center">
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-400">
+                {roundInfo.remaining === 0 ? 'FINAL ROUND' : `${roundInfo.remaining} LEFT`}
+              </span>
+            </div>
+
+            {/* Visual Round Pips (Up to 12) */}
+            <div className="hidden sm:flex flex-row md:flex-col gap-1.5 mt-1">
+              {Array.from({ length: roundInfo.total }).map((_, idx) => {
+                const roundNum = idx + 1;
+                const isDone = roundNum < roundInfo.active;
+                const isCurrent = roundNum === roundInfo.active;
+
+                return (
+                  <div
+                    key={roundNum}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      isCurrent
+                        ? 'w-6 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.6)]'
+                        : isDone
+                        ? 'w-3 bg-emerald-500/80'
+                        : 'w-3 bg-neutral-800'
+                    }`}
+                    title={`Round ${roundNum}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Controller Buttons */}
