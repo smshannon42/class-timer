@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, FastForward, Timer, Plus, Minus } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
-import YouTubePlayer from './YouTubePlayer';
 
 interface WorkoutEngineProps {
   onBroadcast?: (state: any) => void;
@@ -23,28 +22,28 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   const [currentStretchRound, setCurrentStretchRound] = useState(1);
   const [postRestSeconds, setPostRestSeconds] = useState(60);
 
-  // Tabata (default 20s work / 10s rest)
+  // Tabata (default 20s work / 10s rest, 8 rounds)
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
 
-  // EMOM (default 60s, +/- 5s)
+  // EMOM (default 60s interval, default 8 rounds)
   const [emomInterval, setEmomInterval] = useState(60);
-  const [emomRounds, setEmomRounds] = useState(10);
+  const [emomRounds, setEmomRounds] = useState(8);
 
-  // AMRAP (default 5m = 300s, +/- 30s)
+  // AMRAP (default 5m = 300s, default 8 target rounds)
   const [amrapDuration, setAmrapDuration] = useState(300);
+  const [amrapRounds, setAmrapRounds] = useState(8);
 
-  // FOR TIME (default 10m = 600s, +/- 30s)
+  // FOR TIME (default 10m = 600s, default 8 rounds)
   const [forTimeCap, setForTimeCap] = useState(600);
+  const [forTimeRounds, setForTimeRounds] = useState(8);
 
   const [secondsRemaining, setSecondsRemaining] = useState(180);
   const [isActive, setIsActive] = useState(false);
   const [enginePhase, setEnginePhase] = useState<'IDLE' | 'PREP_7' | 'RUNNING' | 'POST_REST_60' | 'FINISHED'>('IDLE');
-
-  const isMusicPlaying = isActive && enginePhase === 'RUNNING' && (mode !== 'TABATA' || isWorkPhase);
 
   const emit = (overrides = {}) => {
     if (!onBroadcast || isProjectorView) return;
@@ -67,9 +66,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       emomInterval,
       emomRounds,
       amrapDuration,
+      amrapRounds,
       forTimeCap,
+      forTimeRounds,
       enablePrep,
-      isMusicPlaying,
       ...overrides
     });
   };
@@ -92,9 +92,11 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       setTabataRest(incomingState.tabataRest ?? 10);
       setTabataRounds(incomingState.tabataRounds ?? 8);
       setEmomInterval(incomingState.emomInterval ?? 60);
-      setEmomRounds(incomingState.emomRounds ?? 10);
+      setEmomRounds(incomingState.emomRounds ?? 8);
       setAmrapDuration(incomingState.amrapDuration ?? 300);
+      setAmrapRounds(incomingState.amrapRounds ?? 8);
       setForTimeCap(incomingState.forTimeCap ?? 600);
+      setForTimeRounds(incomingState.forTimeRounds ?? 8);
       setEnablePrep(incomingState.enablePrep ?? false);
       return;
     }
@@ -262,12 +264,15 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     isWorkPhase,
     currentStretchRound,
     enablePrep,
-    isMusicPlaying,
     tabataWork,
     tabataRest,
+    tabataRounds,
     emomInterval,
+    emomRounds,
     amrapDuration,
-    forTimeCap
+    amrapRounds,
+    forTimeCap,
+    forTimeRounds
   ]);
 
   const handleStart = () => {
@@ -359,10 +364,48 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           setIsActive(false);
         }
       }
+    } else if (mode === 'EMOM') {
+      if (currentRound < emomRounds) {
+        soundEngine.playWorkGo();
+        setCurrentRound((r) => r + 1);
+        setSecondsRemaining(emomInterval);
+      } else {
+        soundEngine.playRest();
+        setEnginePhase('FINISHED');
+        setIsActive(false);
+      }
+    } else if (mode === 'AMRAP') {
+      if (currentRound < amrapRounds) {
+        setCurrentRound((r) => r + 1);
+      }
+    } else if (mode === 'FOR_TIME') {
+      if (currentRound < forTimeRounds) {
+        setCurrentRound((r) => r + 1);
+      } else {
+        soundEngine.playRest();
+        setEnginePhase('FINISHED');
+        setIsActive(false);
+      }
     }
   };
 
-  // Tabata Steppers
+  // Stepper adjustments (Rounds range 1 to 12)
+  const adjustTabataRounds = (delta: number) => {
+    setTabataRounds((r) => Math.min(12, Math.max(1, r + delta)));
+  };
+
+  const adjustEmomRounds = (delta: number) => {
+    setEmomRounds((r) => Math.min(12, Math.max(1, r + delta)));
+  };
+
+  const adjustAmrapRounds = (delta: number) => {
+    setAmrapRounds((r) => Math.min(12, Math.max(1, r + delta)));
+  };
+
+  const adjustForTimeRounds = (delta: number) => {
+    setForTimeRounds((r) => Math.min(12, Math.max(1, r + delta)));
+  };
+
   const adjustTabataWork = (delta: number) => {
     const nextVal = Math.min(180, Math.max(5, tabataWork + delta));
     setTabataWork(nextVal);
@@ -374,21 +417,18 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     setTabataRest(nextVal);
   };
 
-  // EMOM Stepper (15s to 180s in 5s increments)
   const adjustEmom = (delta: number) => {
     const nextVal = Math.min(180, Math.max(15, emomInterval + delta));
     setEmomInterval(nextVal);
     if (mode === 'EMOM' && enginePhase === 'IDLE') setSecondsRemaining(nextVal);
   };
 
-  // AMRAP Stepper (60s to 1800s [30m] in 30s increments)
   const adjustAmrap = (delta: number) => {
     const nextVal = Math.min(1800, Math.max(60, amrapDuration + delta));
     setAmrapDuration(nextVal);
     if (mode === 'AMRAP' && enginePhase === 'IDLE') setSecondsRemaining(nextVal);
   };
 
-  // For Time Cap Stepper (60s to 3600s [60m] in 30s increments)
   const adjustForTime = (delta: number) => {
     const nextVal = Math.min(3600, Math.max(60, forTimeCap + delta));
     setForTimeCap(nextVal);
@@ -411,8 +451,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   return (
     <div className={`flex flex-col items-center justify-center w-full ${isProjectorView ? 'min-h-[85vh]' : ''}`}>
       {!isProjectorView && (
-        <div className="flex flex-col items-center gap-3 mb-4">
-          <div className="flex flex-wrap gap-2 bg-neutral-900/80 p-2 rounded-2xl border border-neutral-800">
+        <div className="flex flex-col items-center gap-3 mb-4 w-full">
+          {/* Mode Switcher */}
+          <div className="flex flex-wrap gap-2 bg-neutral-900/80 p-2 rounded-2xl border border-neutral-800 justify-center">
             {(['DYNAMIC', 'TABATA', 'EMOM', 'AMRAP', 'FOR_TIME'] as const).map((m) => (
               <button
                 key={m}
@@ -420,6 +461,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   setMode(m);
                   setIsActive(false);
                   setEnginePhase('IDLE');
+                  setCurrentRound(1);
                   if (m === 'DYNAMIC') {
                     setDynamicSubMode('RUN');
                     setSecondsRemaining(warmupRunSeconds);
@@ -456,69 +498,181 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
           {/* TABATA Scroll Controls */}
           {mode === 'TABATA' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md mt-1">
-              <div className="bg-neutral-900/90 border border-emerald-500/30 rounded-2xl p-3 flex flex-col gap-2">
+            <div className="flex flex-col gap-2 w-full max-w-md mt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Work Stepper */}
+                <div className="bg-neutral-900/90 border border-emerald-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Work (5s - 3m)</span>
+                    <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataWork)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => adjustTabataWork(-5)}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <input
+                      type="range"
+                      min="5"
+                      max="180"
+                      step="5"
+                      value={tabataWork}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setTabataWork(val);
+                        if (enginePhase === 'IDLE') setSecondsRemaining(val);
+                      }}
+                      className="w-full accent-emerald-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => adjustTabataWork(5)}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Rest Stepper */}
+                <div className="bg-neutral-900/90 border border-amber-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Rest (0 - 60s)</span>
+                    <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataRest)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => adjustTabataRest(-5)}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="60"
+                      step="5"
+                      value={tabataRest}
+                      onChange={(e) => setTabataRest(Number(e.target.value))}
+                      className="w-full accent-amber-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => adjustTabataRest(5)}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rounds Stepper (1 to 12, default 8) */}
+              <div className="bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Work (5s - 3m)</span>
-                  <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataWork)}</span>
+                  <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Rounds (1 - 12)</span>
+                  <span className="text-base font-black text-white font-mono">{tabataRounds} Rounds</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => adjustTabataWork(-5)}
-                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
+                    onClick={() => adjustTabataRounds(-1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
                   >
                     <Minus size={14} />
                   </button>
                   <input
                     type="range"
-                    min="5"
+                    min="1"
+                    max="12"
+                    step="1"
+                    value={tabataRounds}
+                    onChange={(e) => setTabataRounds(Number(e.target.value))}
+                    className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => adjustTabataRounds(1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* EMOM Scroll Controls */}
+          {mode === 'EMOM' && (
+            <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
+              {/* Interval Stepper */}
+              <div className="bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Interval (±5s)</span>
+                  <span className="text-base font-black text-white font-mono">{formatIntervalLabel(emomInterval)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => adjustEmom(-5)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    type="range"
+                    min="15"
                     max="180"
                     step="5"
-                    value={tabataWork}
+                    value={emomInterval}
                     onChange={(e) => {
                       const val = Number(e.target.value);
-                      setTabataWork(val);
+                      setEmomInterval(val);
                       if (enginePhase === 'IDLE') setSecondsRemaining(val);
                     }}
-                    className="w-full accent-emerald-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                    className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
                   />
                   <button
                     type="button"
-                    onClick={() => adjustTabataWork(5)}
-                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"
+                    onClick={() => adjustEmom(5)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
                   >
                     <Plus size={14} />
                   </button>
                 </div>
               </div>
 
-              <div className="bg-neutral-900/90 border border-amber-500/30 rounded-2xl p-3 flex flex-col gap-2">
+              {/* Rounds Stepper (1 to 12, default 8) */}
+              <div className="bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Rest (0 - 60s)</span>
-                  <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataRest)}</span>
+                  <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Rounds (1 - 12)</span>
+                  <span className="text-base font-black text-white font-mono">{emomRounds} Rounds</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => adjustTabataRest(-5)}
-                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
+                    onClick={() => adjustEmomRounds(-1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
                   >
                     <Minus size={14} />
                   </button>
                   <input
                     type="range"
-                    min="0"
-                    max="60"
-                    step="5"
-                    value={tabataRest}
-                    onChange={(e) => setTabataRest(Number(e.target.value))}
-                    className="w-full accent-amber-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                    min="1"
+                    max="12"
+                    step="1"
+                    value={emomRounds}
+                    onChange={(e) => setEmomRounds(Number(e.target.value))}
+                    className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
                   />
                   <button
                     type="button"
-                    onClick={() => adjustTabataRest(5)}
-                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"
+                    onClick={() => adjustEmomRounds(1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
                   >
                     <Plus size={14} />
                   </button>
@@ -527,118 +681,151 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             </div>
           )}
 
-          {/* EMOM Scroll Control */}
-          {mode === 'EMOM' && (
-            <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Interval (±5s)</span>
-                <span className="text-base font-black text-white font-mono">{formatIntervalLabel(emomInterval)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => adjustEmom(-5)}
-                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
-                >
-                  <Minus size={14} />
-                </button>
-                <input
-                  type="range"
-                  min="15"
-                  max="180"
-                  step="5"
-                  value={emomInterval}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setEmomInterval(val);
-                    if (enginePhase === 'IDLE') setSecondsRemaining(val);
-                  }}
-                  className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
-                />
-                <button
-                  type="button"
-                  onClick={() => adjustEmom(5)}
-                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* AMRAP Scroll Control */}
+          {/* AMRAP Scroll Controls */}
           {mode === 'AMRAP' && (
-            <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-fuchsia-500/30 rounded-2xl p-3 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-fuchsia-400 uppercase tracking-wider">Target Duration (±30s)</span>
-                <span className="text-base font-black text-white font-mono">{formatIntervalLabel(amrapDuration)}</span>
+            <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
+              {/* Duration Stepper */}
+              <div className="bg-neutral-900/90 border border-fuchsia-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-fuchsia-400 uppercase tracking-wider">Duration (±30s)</span>
+                  <span className="text-base font-black text-white font-mono">{formatIntervalLabel(amrapDuration)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => adjustAmrap(-30)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    type="range"
+                    min="60"
+                    max="1800"
+                    step="30"
+                    value={amrapDuration}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setAmrapDuration(val);
+                      if (enginePhase === 'IDLE') setSecondsRemaining(val);
+                    }}
+                    className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => adjustAmrap(30)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => adjustAmrap(-30)}
-                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
-                >
-                  <Minus size={14} />
-                </button>
-                <input
-                  type="range"
-                  min="60"
-                  max="1800"
-                  step="30"
-                  value={amrapDuration}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setAmrapDuration(val);
-                    if (enginePhase === 'IDLE') setSecondsRemaining(val);
-                  }}
-                  className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
-                />
-                <button
-                  type="button"
-                  onClick={() => adjustAmrap(30)}
-                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
-                >
-                  <Plus size={14} />
-                </button>
+
+              {/* Target Rounds Stepper (1 to 12, default 8) */}
+              <div className="bg-neutral-900/90 border border-fuchsia-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-fuchsia-400 uppercase tracking-wider">Target Rounds (1 - 12)</span>
+                  <span className="text-base font-black text-white font-mono">{amrapRounds} Rounds</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => adjustAmrapRounds(-1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    type="range"
+                    min="1"
+                    max="12"
+                    step="1"
+                    value={amrapRounds}
+                    onChange={(e) => setAmrapRounds(Number(e.target.value))}
+                    className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => adjustAmrapRounds(1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* FOR TIME Scroll Control */}
+          {/* FOR TIME Scroll Controls */}
           {mode === 'FOR_TIME' && (
-            <div className="w-full max-w-sm mt-1 bg-neutral-900/90 border border-indigo-500/30 rounded-2xl p-3 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Time Cap (±30s)</span>
-                <span className="text-base font-black text-white font-mono">{formatIntervalLabel(forTimeCap)}</span>
+            <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
+              {/* Time Cap Stepper */}
+              <div className="bg-neutral-900/90 border border-indigo-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Time Cap (±30s)</span>
+                  <span className="text-base font-black text-white font-mono">{formatIntervalLabel(forTimeCap)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => adjustForTime(-30)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    type="range"
+                    min="60"
+                    max="3600"
+                    step="30"
+                    value={forTimeCap}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setForTimeCap(val);
+                    }}
+                    className="w-full accent-indigo-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => adjustForTime(30)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => adjustForTime(-30)}
-                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
-                >
-                  <Minus size={14} />
-                </button>
-                <input
-                  type="range"
-                  min="60"
-                  max="3600"
-                  step="30"
-                  value={forTimeCap}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setForTimeCap(val);
-                  }}
-                  className="w-full accent-indigo-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
-                />
-                <button
-                  type="button"
-                  onClick={() => adjustForTime(30)}
-                  className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
-                >
-                  <Plus size={14} />
-                </button>
+
+              {/* Target Rounds Stepper (1 to 12, default 8) */}
+              <div className="bg-neutral-900/90 border border-indigo-500/30 rounded-2xl p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Target Rounds (1 - 12)</span>
+                  <span className="text-base font-black text-white font-mono">{forTimeRounds} Rounds</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => adjustForTimeRounds(-1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <input
+                    type="range"
+                    min="1"
+                    max="12"
+                    step="1"
+                    value={forTimeRounds}
+                    onChange={(e) => setForTimeRounds(Number(e.target.value))}
+                    className="w-full accent-indigo-400 h-2 bg-neutral-950 rounded-lg cursor-pointer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => adjustForTimeRounds(1)}
+                    className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -672,18 +859,15 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         )}
         {mode === 'AMRAP' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `AMRAP - ${formatIntervalLabel(amrapDuration)}`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `AMRAP - ROUND ${currentRound}/${amrapRounds} (${formatIntervalLabel(amrapDuration)})`}
           </span>
         )}
         {mode === 'FOR_TIME' && (
           <span className="px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
+            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `FOR TIME - ROUND ${currentRound}/${forTimeRounds} (CAP: ${formatIntervalLabel(forTimeCap)})`}
           </span>
         )}
       </div>
-
-      {/* Audio Deck Blue Pill */}
-      {!isProjectorView && <YouTubePlayer isPlaying={isMusicPlaying} />}
 
       {/* Main Countdown Display */}
       <div className="relative flex items-center justify-center my-4">
