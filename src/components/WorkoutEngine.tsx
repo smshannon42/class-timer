@@ -448,6 +448,31 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     return s === 0 ? `${m}m` : `${m}m ${s}s`;
   };
 
+  // Determine if we are in the last 10 seconds of WORK (never during rest/prep)
+  const isWorkTenSecondsLeft = (): boolean => {
+    if (enginePhase !== 'RUNNING') return false;
+
+    if (mode === 'DYNAMIC') {
+      return secondsRemaining <= 10 && secondsRemaining > 0;
+    }
+    if (mode === 'TABATA') {
+      return isWorkPhase && secondsRemaining <= 10 && secondsRemaining > 0;
+    }
+    if (mode === 'EMOM') {
+      return secondsRemaining <= 10 && secondsRemaining > 0;
+    }
+    if (mode === 'AMRAP') {
+      return secondsRemaining <= 10 && secondsRemaining > 0;
+    }
+    if (mode === 'FOR_TIME') {
+      const remainingTime = forTimeCap - secondsRemaining;
+      return remainingTime <= 10 && remainingTime > 0;
+    }
+    return false;
+  };
+
+  const showRedCountdown = isWorkTenSecondsLeft();
+
   return (
     <div className={`flex flex-col items-center justify-center w-full ${isProjectorView ? 'min-h-[85vh]' : ''}`}>
       {!isProjectorView && (
@@ -871,9 +896,15 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
       {/* Main Countdown Display */}
       <div className="relative flex items-center justify-center my-4">
-        <div className={`font-black tracking-tighter select-none font-mono ${
+        <div className={`font-black tracking-tighter select-none font-mono transition-colors duration-300 ${
           isProjectorView ? 'text-[14rem] md:text-[20rem]' : 'text-8xl md:text-[11rem]'
-        } ${enginePhase === 'PREP_7' ? 'text-amber-400 animate-pulse' : 'text-white drop-shadow-2xl'}`}>
+        } ${
+          enginePhase === 'PREP_7'
+            ? 'text-amber-400 animate-pulse'
+            : showRedCountdown
+            ? 'text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.45)]'
+            : 'text-white drop-shadow-2xl'
+        }`}>
           {formatDisplayTime(secondsRemaining)}
         </div>
       </div>
