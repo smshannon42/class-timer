@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, FastForward, Timer, Plus, Minus } from 'lucide-react';
+import { Play, Pause, RotateCcw, FastForward, Timer, Plus, Minus, Maximize, Minimize, Volume2, Mic } from 'lucide-react';
 import { soundEngine } from '@/utils/audio';
 
 interface WorkoutEngineProps {
@@ -12,28 +12,32 @@ interface WorkoutEngineProps {
 
 export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorView = false }: WorkoutEngineProps) {
   const [mode, setMode] = useState<'WARM_UP' | 'TABATA' | 'AMRAP' | 'EMOM' | 'FOR_TIME'>('WARM_UP');
-
   const [enablePrep, setEnablePrep] = useState<boolean>(false);
 
-  // Warm-Up (default 3m = 180s, adjustable ±30s)
+  // Sound and voice states
+  const [soundMode, setSoundMode] = useState<'WHISTLE' | 'SYNTH'>('WHISTLE');
+  const [voiceCues, setVoiceCues] = useState<boolean>(true);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Warm-Up
   const [warmupSeconds, setWarmupSeconds] = useState(180);
 
-  // Tabata (default 20s work / 10s rest, 8 rounds)
+  // Tabata
   const [tabataWork, setTabataWork] = useState(20);
   const [tabataRest, setTabataRest] = useState(10);
   const [tabataRounds, setTabataRounds] = useState(8);
   const [currentRound, setCurrentRound] = useState(1);
   const [isWorkPhase, setIsWorkPhase] = useState(true);
 
-  // EMOM (default 60s interval, default 8 rounds)
+  // EMOM
   const [emomInterval, setEmomInterval] = useState(60);
   const [emomRounds, setEmomRounds] = useState(8);
 
-  // AMRAP (default 5m = 300s, default 8 target rounds)
+  // AMRAP
   const [amrapDuration, setAmrapDuration] = useState(300);
   const [amrapRounds, setAmrapRounds] = useState(8);
 
-  // FOR TIME (default 10m = 600s, default 8 rounds)
+  // FOR TIME
   const [forTimeCap, setForTimeCap] = useState(600);
   const [forTimeRounds, setForTimeRounds] = useState(8);
 
@@ -96,12 +100,25 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
+  // Fullscreen Handler
+  const toggleFullScreen = () => {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
+
   // Flash state handler confined inside circle
   useEffect(() => {
     const prev = prevPhaseRef.current;
     
     if (enginePhase === 'FINISHED' && prev.phase !== 'FINISHED') {
       setFlashType('FINISH');
+      soundEngine.speak('Workout Complete');
       const timer = setTimeout(() => setFlashType(null), 650);
       prevPhaseRef.current = { phase: enginePhase, isWork: isWorkPhase };
       return () => clearTimeout(timer);
@@ -395,6 +412,38 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     }
   };
 
+  // 1-Tap Preset Loaders
+  const loadPreset = (preset: 'TABATA_STD' | 'SPRINT_INTERVALS' | 'EMOM_8' | 'AMRAP_5' | 'WARMUP_3') => {
+    handleReset();
+    if (preset === 'TABATA_STD') {
+      setMode('TABATA');
+      setTabataWork(20);
+      setTabataRest(10);
+      setTabataRounds(8);
+      setSecondsRemaining(20);
+    } else if (preset === 'SPRINT_INTERVALS') {
+      setMode('TABATA');
+      setTabataWork(30);
+      setTabataRest(30);
+      setTabataRounds(6);
+      setSecondsRemaining(30);
+    } else if (preset === 'EMOM_8') {
+      setMode('EMOM');
+      setEmomInterval(60);
+      setEmomRounds(8);
+      setSecondsRemaining(60);
+    } else if (preset === 'AMRAP_5') {
+      setMode('AMRAP');
+      setAmrapDuration(300);
+      setAmrapRounds(8);
+      setSecondsRemaining(300);
+    } else if (preset === 'WARMUP_3') {
+      setMode('WARM_UP');
+      setWarmupSeconds(180);
+      setSecondsRemaining(180);
+    }
+  };
+
   // Keyboard Hotkeys
   useEffect(() => {
     if (isProjectorView) return;
@@ -413,6 +462,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
       } else if (e.key === 's' || e.key === 'S' || e.code === 'ArrowRight') {
         e.preventDefault();
         handleSkip();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullScreen();
       }
     };
 
@@ -505,6 +557,29 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
 
   const roundInfo = getRoundInfo();
 
+  // Next Up Sub-Badge Prediction
+  const getNextUpLabel = (): string => {
+    if (enginePhase === 'PREP_7') {
+      return mode === 'WARM_UP' ? 'NEXT: WARM-UP' : mode === 'TABATA' ? `NEXT: WORK (${tabataWork}s)` : 'NEXT: WORK';
+    }
+    if (enginePhase === 'FINISHED') return 'WORKOUT COMPLETE';
+
+    if (mode === 'WARM_UP') return 'NEXT: WORKOUT FINISH';
+    if (mode === 'TABATA') {
+      if (isWorkPhase) {
+        return tabataRest > 0 ? `NEXT: REST (${tabataRest}s)` : currentRound < tabataRounds ? `NEXT: ROUND ${currentRound + 1}` : 'NEXT: COMPLETE';
+      } else {
+        return currentRound < tabataRounds ? `NEXT: WORK - ROUND ${currentRound + 1}` : 'NEXT: COMPLETE';
+      }
+    }
+    if (mode === 'EMOM') {
+      return currentRound < emomRounds ? `NEXT: ROUND ${currentRound + 1}` : 'NEXT: COMPLETE';
+    }
+    if (mode === 'AMRAP') return 'NEXT: TIME CAP';
+    if (mode === 'FOR_TIME') return 'NEXT: TIME CAP';
+    return '';
+  };
+
   const isRestPhaseActive = (): boolean => {
     if (mode === 'TABATA' && enginePhase === 'RUNNING' && !isWorkPhase) return true;
     return false;
@@ -559,7 +634,8 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   const progress = getProgressPercentage();
-  const radius = 290;
+  // Way bigger circle radius: 455 on 1000x1000 canvas gives 910px diameter with ample numeral breathing room
+  const radius = 455;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
@@ -580,11 +656,68 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   return (
-    <div className={`relative flex flex-col items-center justify-center w-full rounded-3xl p-4 border border-neutral-900 bg-neutral-950/80 transition-colors ${isProjectorView ? 'min-h-[92vh]' : ''}`}>
-      {/* Controller Mode Switchers & Steppers: Hidden while running */}
+    <div className={`relative flex flex-col items-center justify-center w-full rounded-3xl p-3 sm:p-5 border border-neutral-900 bg-neutral-950/90 transition-colors ${
+      isProjectorView ? 'min-h-screen justify-between py-6' : 'min-h-[75vh]'
+    }`}>
+      {/* Top Utility Header Bar */}
+      {!isProjectorView && (
+        <div className="flex items-center justify-between w-full max-w-4xl px-2 mb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const next = soundMode === 'WHISTLE' ? 'SYNTH' : 'WHISTLE';
+                soundEngine.soundType = next;
+                setSoundMode(next);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white"
+              title="Toggle Whistle / Tone Chime"
+            >
+              <Volume2 size={13} className="text-cyan-400" />
+              <span>{soundMode}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const next = !voiceCues;
+                soundEngine.speechEnabled = next;
+                setVoiceCues(next);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border transition-all ${
+                voiceCues ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'bg-neutral-900 border-neutral-800 text-neutral-500'
+              }`}
+              title="Toggle Voice Announcements"
+            >
+              <Mic size={13} />
+              <span>VOICE: {voiceCues ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+
+          <button
+            onClick={toggleFullScreen}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white active:scale-95"
+            title="Toggle True Fullscreen (F)"
+          >
+            {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
+            <span>FULLSCREEN (F)</span>
+          </button>
+        </div>
+      )}
+
+      {/* Preset Quick-Load Drill Pills */}
       {!isProjectorView && !isActive && (
-        <div className="flex flex-col items-center gap-3 mb-4 w-full animate-in fade-in duration-300">
-          {/* Mode Switcher */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-3 max-w-2xl">
+          <span className="text-[11px] font-black uppercase text-neutral-500 mr-1">Presets:</span>
+          <button onClick={() => loadPreset('TABATA_STD')} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300">Tabata 20/10</button>
+          <button onClick={() => loadPreset('SPRINT_INTERVALS')} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300">Sprint 30/30</button>
+          <button onClick={() => loadPreset('EMOM_8')} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300">EMOM 8 Rds</button>
+          <button onClick={() => loadPreset('AMRAP_5')} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300">AMRAP 5m</button>
+          <button onClick={() => loadPreset('WARMUP_3')} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300">Warm-Up 3m</button>
+        </div>
+      )}
+
+      {/* Mode Controls when stopped */}
+      {!isProjectorView && !isActive && (
+        <div className="flex flex-col items-center gap-3 mb-3 w-full animate-in fade-in duration-300">
           <div className="flex flex-wrap gap-2 bg-neutral-900/90 p-2 rounded-2xl border border-neutral-800 justify-center">
             {(['WARM_UP', 'TABATA', 'EMOM', 'AMRAP', 'FOR_TIME'] as const).map((m) => (
               <button
@@ -594,17 +727,11 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   setIsActive(false);
                   setEnginePhase('IDLE');
                   setCurrentRound(1);
-                  if (m === 'WARM_UP') {
-                    setSecondsRemaining(warmupSeconds);
-                  } else if (m === 'TABATA') {
-                    setSecondsRemaining(tabataWork);
-                  } else if (m === 'EMOM') {
-                    setSecondsRemaining(emomInterval);
-                  } else if (m === 'AMRAP') {
-                    setSecondsRemaining(amrapDuration);
-                  } else if (m === 'FOR_TIME') {
-                    setSecondsRemaining(0);
-                  }
+                  if (m === 'WARM_UP') setSecondsRemaining(warmupSeconds);
+                  else if (m === 'TABATA') setSecondsRemaining(tabataWork);
+                  else if (m === 'EMOM') setSecondsRemaining(emomInterval);
+                  else if (m === 'AMRAP') setSecondsRemaining(amrapDuration);
+                  else if (m === 'FOR_TIME') setSecondsRemaining(0);
                 }}
                 className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
                   mode === m ? 'bg-cyan-500 text-neutral-950 shadow-lg shadow-cyan-500/20' : 'text-neutral-400 hover:text-white'
@@ -627,7 +754,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
             <span>Prep (7s): <strong className="uppercase">{enablePrep ? 'ON' : 'OFF'}</strong></span>
           </button>
 
-          {/* WARM-UP Steppers (±30s) */}
+          {/* Steppers */}
           {mode === 'WARM_UP' && (
             <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
               <div className="bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
@@ -636,19 +763,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{formatIntervalLabel(warmupSeconds)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustWarmup(-30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustWarmup(-30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="30" max="900" step="30" value={warmupSeconds} onChange={(e) => { const v = Number(e.target.value); setWarmupSeconds(v); if (enginePhase === 'IDLE') setSecondsRemaining(v); }} className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustWarmup(30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustWarmup(30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TABATA Steppers */}
           {mode === 'TABATA' && (
             <div className="flex flex-col gap-2 w-full max-w-md mt-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -658,13 +780,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                     <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataWork)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => adjustTabataWork(-5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95">
-                      <Minus size={14} />
-                    </button>
+                    <button type="button" onClick={() => adjustTabataWork(-5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                     <input type="range" min="5" max="180" step="5" value={tabataWork} onChange={(e) => { const v = Number(e.target.value); setTabataWork(v); if (enginePhase === 'IDLE') setSecondsRemaining(v); }} className="w-full accent-emerald-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                    <button type="button" onClick={() => adjustTabataWork(5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95">
-                      <Plus size={14} />
-                    </button>
+                    <button type="button" onClick={() => adjustTabataWork(5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-emerald-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                   </div>
                 </div>
 
@@ -674,13 +792,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                     <span className="text-base font-black text-white font-mono">{formatIntervalLabel(tabataRest)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button type="button" onClick={() => adjustTabataRest(-5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95">
-                      <Minus size={14} />
-                    </button>
+                    <button type="button" onClick={() => adjustTabataRest(-5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                     <input type="range" min="0" max="60" step="5" value={tabataRest} onChange={(e) => setTabataRest(Number(e.target.value))} className="w-full accent-amber-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                    <button type="button" onClick={() => adjustTabataRest(5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95">
-                      <Plus size={14} />
-                    </button>
+                    <button type="button" onClick={() => adjustTabataRest(5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                   </div>
                 </div>
               </div>
@@ -691,19 +805,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{tabataRounds}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustTabataRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustTabataRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="1" max="12" step="1" value={tabataRounds} onChange={(e) => setTabataRounds(Number(e.target.value))} className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustTabataRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustTabataRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* EMOM Steppers */}
           {mode === 'EMOM' && (
             <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
               <div className="bg-neutral-900/90 border border-cyan-500/30 rounded-2xl p-3 flex flex-col gap-2">
@@ -712,13 +821,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{formatIntervalLabel(emomInterval)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustEmom(-5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustEmom(-5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="15" max="180" step="5" value={emomInterval} onChange={(e) => { const v = Number(e.target.value); setEmomInterval(v); if (enginePhase === 'IDLE') setSecondsRemaining(v); }} className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustEmom(5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustEmom(5)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
 
@@ -728,19 +833,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{emomRounds}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustEmomRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustEmomRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="1" max="12" step="1" value={emomRounds} onChange={(e) => setEmomRounds(Number(e.target.value))} className="w-full accent-cyan-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustEmomRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustEmomRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-cyan-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* AMRAP Steppers */}
           {mode === 'AMRAP' && (
             <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
               <div className="bg-neutral-900/90 border border-fuchsia-500/30 rounded-2xl p-3 flex flex-col gap-2">
@@ -749,13 +849,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{formatIntervalLabel(amrapDuration)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustAmrap(-30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustAmrap(-30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="60" max="1800" step="30" value={amrapDuration} onChange={(e) => { const v = Number(e.target.value); setAmrapDuration(v); if (enginePhase === 'IDLE') setSecondsRemaining(v); }} className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustAmrap(30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustAmrap(30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
 
@@ -765,19 +861,14 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{amrapRounds}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustAmrapRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustAmrapRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="1" max="12" step="1" value={amrapRounds} onChange={(e) => setEmomRounds(Number(e.target.value))} className="w-full accent-fuchsia-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustAmrapRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustAmrapRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-fuchsia-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* FOR TIME Steppers */}
           {mode === 'FOR_TIME' && (
             <div className="flex flex-col gap-2 w-full max-w-sm mt-1">
               <div className="bg-neutral-900/90 border border-indigo-500/30 rounded-2xl p-3 flex flex-col gap-2">
@@ -786,13 +877,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{formatIntervalLabel(forTimeCap)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustForTime(-30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustForTime(-30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="60" max="3600" step="30" value={forTimeCap} onChange={(e) => setForTimeCap(Number(e.target.value))} className="w-full accent-indigo-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustForTime(30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustForTime(30)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
 
@@ -802,13 +889,9 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
                   <span className="text-base font-black text-white font-mono">{forTimeRounds}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => adjustForTimeRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95">
-                    <Minus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustForTimeRounds(-1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"><Minus size={14} /></button>
                   <input type="range" min="1" max="12" step="1" value={forTimeRounds} onChange={(e) => setForTimeRounds(Number(e.target.value))} className="w-full accent-indigo-400 h-2 bg-neutral-950 rounded-lg cursor-pointer" />
-                  <button type="button" onClick={() => adjustForTimeRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95">
-                    <Plus size={14} />
-                  </button>
+                  <button type="button" onClick={() => adjustForTimeRounds(1)} className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-indigo-400 border border-neutral-700 active:scale-95"><Plus size={14} /></button>
                 </div>
               </div>
             </div>
@@ -816,131 +899,126 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* Active Phase Pill */}
-      <div className="flex items-center gap-3 mb-2">
-        {mode === 'WARM_UP' && (
-          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : 'WARM-UP'}
-          </span>
-        )}
-        {mode === 'TABATA' && (
-          <span className={`px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase ${
-            isWorkPhase ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-          }`}>
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : isWorkPhase ? `WORK - ROUND ${currentRound}` : `REST - ROUND ${currentRound}`}
-          </span>
-        )}
-        {mode === 'EMOM' && (
-          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}`}
-          </span>
-        )}
-        {mode === 'AMRAP' && (
-          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `AMRAP (${formatIntervalLabel(amrapDuration)})`}
-          </span>
-        )}
-        {mode === 'FOR_TIME' && (
-          <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            {enginePhase === 'PREP_7' ? 'PREP (7s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
-          </span>
+      {/* Top Indicators: Phase Badge + Horizontal Round Counter */}
+      <div className="flex flex-col items-center gap-2 w-full">
+        <div className="flex items-center gap-3">
+          {mode === 'WARM_UP' && (
+            <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              {enginePhase === 'PREP_7' ? 'PREP (7s)' : 'WARM-UP'}
+            </span>
+          )}
+          {mode === 'TABATA' && (
+            <span className={`px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase ${
+              isWorkPhase ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+            }`}>
+              {enginePhase === 'PREP_7' ? 'PREP (7s)' : isWorkPhase ? `WORK - ROUND ${currentRound}` : `REST - ROUND ${currentRound}`}
+            </span>
+          )}
+          {mode === 'EMOM' && (
+            <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              {enginePhase === 'PREP_7' ? 'PREP (7s)' : `ROUND ${currentRound}`}
+            </span>
+          )}
+          {mode === 'AMRAP' && (
+            <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20">
+              {enginePhase === 'PREP_7' ? 'PREP (7s)' : `AMRAP (${formatIntervalLabel(amrapDuration)})`}
+            </span>
+          )}
+          {mode === 'FOR_TIME' && (
+            <span className="px-5 py-2 rounded-full text-xs md:text-sm font-black tracking-widest uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              {enginePhase === 'PREP_7' ? 'PREP (7s)' : `FOR TIME (CAP: ${formatIntervalLabel(forTimeCap)})`}
+            </span>
+          )}
+        </div>
+
+        {/* Round Counter Bar */}
+        {roundInfo.hasRounds && (
+          <div
+            onClick={(e) => {
+              if (mode === 'AMRAP' && !isProjectorView) {
+                e.stopPropagation();
+                setCurrentRound((r) => r + 1);
+              }
+            }}
+            className={`flex items-center justify-center gap-3.5 px-6 py-2 bg-neutral-900/90 border border-neutral-800/80 rounded-2xl shadow-lg backdrop-blur-md transition-all ${
+              mode === 'AMRAP' ? 'cursor-pointer hover:border-fuchsia-500/50 active:scale-95' : ''
+            }`}
+            title={mode === 'AMRAP' ? 'Click to log +1 completed round' : undefined}
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs md:text-sm font-black uppercase tracking-wider text-neutral-400">Round</span>
+              <div className="flex items-baseline font-mono">
+                <span className="text-xl md:text-2xl font-black text-cyan-400">{roundInfo.active}</span>
+                <span className="text-sm md:text-base font-bold text-neutral-500">/{roundInfo.total}</span>
+              </div>
+            </div>
+
+            <span className="text-neutral-800">|</span>
+
+            <span className="text-xs md:text-sm font-black uppercase tracking-wider text-amber-400 font-mono">
+              {mode === 'AMRAP' ? '+1 LOG SCORE' : roundInfo.remaining === 0 ? 'FINAL ROUND' : `${roundInfo.remaining} LEFT`}
+            </span>
+
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: Math.min(12, roundInfo.total) }).map((_, idx) => {
+                const roundNum = idx + 1;
+                const isDone = roundNum < roundInfo.active;
+                const isCurrent = roundNum === roundInfo.active;
+
+                return (
+                  <div
+                    key={roundNum}
+                    className={`h-2.5 rounded-full transition-all duration-300 ${
+                      isCurrent
+                        ? 'w-6 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]'
+                        : isDone
+                        ? 'w-2.5 bg-emerald-500/80'
+                        : 'w-2.5 bg-neutral-800'
+                    }`}
+                    title={`Round ${roundNum}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Clean Horizontal Round Counter Bar Positioned Above Clock (hidden in Warm-Up) */}
-      {roundInfo.hasRounds && (
-        <div
-          onClick={(e) => {
-            if (mode === 'AMRAP' && !isProjectorView) {
-              e.stopPropagation();
-              setCurrentRound((r) => r + 1);
-            }
-          }}
-          className={`flex items-center justify-center gap-3.5 px-6 py-2.5 my-2 bg-neutral-900/90 border border-neutral-800/80 rounded-2xl shadow-lg backdrop-blur-md transition-all ${
-            mode === 'AMRAP' ? 'cursor-pointer hover:border-fuchsia-500/50 active:scale-95' : ''
-          }`}
-          title={mode === 'AMRAP' ? 'Click to log +1 completed round' : undefined}
-        >
-          {/* Active Round Fraction */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs md:text-sm font-black uppercase tracking-wider text-neutral-400">Round</span>
-            <div className="flex items-baseline font-mono">
-              <span className="text-xl md:text-2xl font-black text-cyan-400">{roundInfo.active}</span>
-              <span className="text-sm md:text-base font-bold text-neutral-500">/{roundInfo.total}</span>
-            </div>
-          </div>
-
-          <span className="text-neutral-800">|</span>
-
-          {/* Remaining Badge */}
-          <span className="text-xs md:text-sm font-black uppercase tracking-wider text-amber-400 font-mono">
-            {mode === 'AMRAP' ? '+1 LOG SCORE' : roundInfo.remaining === 0 ? 'FINAL ROUND' : `${roundInfo.remaining} LEFT`}
-          </span>
-
-          {/* Horizontal Progress Pips */}
-          <div className="flex items-center gap-1.5">
-            {Array.from({ length: Math.min(12, roundInfo.total) }).map((_, idx) => {
-              const roundNum = idx + 1;
-              const isDone = roundNum < roundInfo.active;
-              const isCurrent = roundNum === roundInfo.active;
-
-              return (
-                <div
-                  key={roundNum}
-                  className={`h-2.5 rounded-full transition-all duration-300 ${
-                    isCurrent
-                      ? 'w-6 bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]'
-                      : isDone
-                      ? 'w-2.5 bg-emerald-500/80'
-                      : 'w-2.5 bg-neutral-800'
-                  }`}
-                  title={`Round ${roundNum}`}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Enlarged Circle Timer Stage */}
+      {/* Massive Non-Overlapping Circle Arena */}
       <div
         onClick={toggleStartPause}
         role="button"
         tabIndex={0}
         aria-label={isActive ? 'Pause timer' : 'Start timer'}
-        className={`relative flex items-center justify-center my-4 cursor-pointer select-none active:scale-[0.985] transition-transform duration-150 ${
+        className={`relative flex items-center justify-center my-auto cursor-pointer select-none active:scale-[0.985] transition-transform duration-150 ${
           isProjectorView 
-            ? 'w-[640px] h-[640px] sm:w-[820px] sm:h-[820px] md:w-[980px] md:h-[980px] lg:w-[1100px] lg:h-[1100px]' 
-            : 'w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] md:w-[680px] md:h-[680px]'
+            ? 'w-[82vw] max-w-[880px] h-[82vw] max-h-[880px]' 
+            : 'w-[320px] h-[320px] sm:w-[420px] sm:h-[420px] md:w-[500px] md:h-[500px]'
         }`}
       >
-        {/* Confined Circular Flash inside timer circle */}
+        {/* Flash confined inside the circle */}
         <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none z-0">
-          {flashType === 'REST' && (
-            <div className="w-full h-full bg-amber-400/40 animate-out fade-out duration-500" />
-          )}
-          {flashType === 'FINISH' && (
-            <div className="w-full h-full bg-rose-600/50 animate-out fade-out duration-700" />
-          )}
+          {flashType === 'REST' && <div className="w-full h-full bg-amber-400/40 animate-out fade-out duration-500" />}
+          {flashType === 'FINISH' && <div className="w-full h-full bg-rose-600/50 animate-out fade-out duration-700" />}
         </div>
 
-        {/* Glowing Progress Ring Halo */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md z-10" viewBox="0 0 640 640">
+        {/* 1000x1000 SVG Canvas with 455 Radius Halo for complete numeral clearance */}
+        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md z-10" viewBox="0 0 1000 1000">
           <circle
-            cx="320"
-            cy="320"
+            cx="500"
+            cy="500"
             r={radius}
             fill="transparent"
             stroke="currentColor"
-            strokeWidth="16"
+            strokeWidth="20"
             className="text-neutral-900/90"
           />
           <circle
-            cx="320"
-            cy="320"
+            cx="500"
+            cy="500"
             r={radius}
             fill="transparent"
-            strokeWidth="18"
+            strokeWidth="24"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
@@ -948,19 +1026,28 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           />
         </svg>
 
-        {/* Workout Timer Display */}
+        {/* Scaled Digits Centered Inside Ring */}
         <div className={`relative z-20 font-black tracking-tight select-none font-mono transition-colors duration-300 pointer-events-none ${
           isProjectorView 
-            ? 'text-[15rem] sm:text-[20rem] md:text-[26rem] lg:text-[32rem]' 
-            : 'text-8xl sm:text-[10.5rem] md:text-[13rem]'
+            ? 'text-[18vw] max-text-[15rem] leading-none' 
+            : 'text-7xl sm:text-8xl md:text-9xl'
         } ${getTimerTextColorClass()}`}>
           {formatDisplayTime(secondsRemaining)}
         </div>
       </div>
 
+      {/* Feature 1: NEXT UP Preview Sub-Badge */}
+      {isActive && getNextUpLabel() && (
+        <div className="z-20 mt-1 mb-2 px-5 py-2 rounded-full bg-neutral-900/90 border border-neutral-800 flex items-center justify-center animate-in fade-in duration-300">
+          <span className="text-xs md:text-sm font-black tracking-widest text-neutral-400 uppercase font-mono">
+            {getNextUpLabel()}
+          </span>
+        </div>
+      )}
+
       {/* Controller Buttons */}
       {!isProjectorView && (
-        <div className="flex items-center gap-4 mt-2 z-20">
+        <div className="flex items-center gap-4 mt-1 z-20">
           <button
             onClick={isActive ? handlePause : handleStart}
             className={`p-6 rounded-3xl font-black flex items-center gap-2 transition-all shadow-xl active:scale-95 ${
