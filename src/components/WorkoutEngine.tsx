@@ -105,7 +105,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
     });
   };
 
-  // Confined flash state handler for inside-circle illumination
+  // Flash state handler confined inside circle
   useEffect(() => {
     const prev = prevPhaseRef.current;
     
@@ -629,14 +629,10 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   const progress = getProgressPercentage();
-  const radius = 240;
+  // Expanded radius and circumference for wider clearance
+  const radius = 290;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
-
-  // Clean, consistent backdrop outside the circle timer
-  const getAmbientGlowClass = (): string => {
-    return 'bg-neutral-950/80 border-neutral-900';
-  };
 
   const getRingColorClass = (): string => {
     if (showRedCountdown) return 'stroke-rose-500 shadow-rose-500';
@@ -655,7 +651,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
   };
 
   return (
-    <div className={`relative flex flex-col items-center justify-center w-full rounded-3xl p-4 border transition-colors ${getAmbientGlowClass()} ${isProjectorView ? 'min-h-[92vh]' : ''}`}>
+    <div className={`relative flex flex-col items-center justify-center w-full rounded-3xl p-4 border border-neutral-900 bg-neutral-950/80 transition-colors ${isProjectorView ? 'min-h-[92vh]' : ''}`}>
       {/* Controller Mode Switchers & Steppers: Hidden while running */}
       {!isProjectorView && !isActive && (
         <div className="flex flex-col items-center gap-3 mb-4 w-full animate-in fade-in duration-300">
@@ -963,7 +959,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         </div>
       )}
 
-      {/* Dead-Centered Clock Display with Halo Ring & Interior Flash */}
+      {/* Enlarged Circle Timer Stage (Numbers comfortably inside halo) */}
       <div
         onClick={toggleStartPause}
         role="button"
@@ -971,11 +967,11 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
         aria-label={isActive ? 'Pause timer' : 'Start timer'}
         className={`relative flex items-center justify-center my-4 cursor-pointer select-none active:scale-[0.985] transition-transform duration-150 ${
           isProjectorView 
-            ? 'w-[520px] h-[520px] sm:w-[680px] sm:h-[680px] md:w-[840px] md:h-[840px] lg:w-[940px] lg:h-[940px]' 
-            : 'w-[360px] h-[360px] sm:w-[480px] sm:h-[480px] md:w-[560px] md:h-[560px]'
+            ? 'w-[640px] h-[640px] sm:w-[820px] sm:h-[820px] md:w-[980px] md:h-[980px] lg:w-[1100px] lg:h-[1100px]' 
+            : 'w-[440px] h-[440px] sm:w-[560px] sm:h-[560px] md:w-[680px] md:h-[680px]'
         }`}
       >
-        {/* Confined Circular Flash ONLY inside the timer circle */}
+        {/* Confined Circular Flash ONLY inside the expanded timer circle */}
         <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none z-0">
           {flashType === 'REST' && (
             <div className="w-full h-full bg-amber-400/40 animate-out fade-out duration-500" />
@@ -985,23 +981,23 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           )}
         </div>
 
-        {/* Glowing Progress Ring Halo */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md z-10" viewBox="0 0 520 520">
+        {/* Glowing Progress Ring Halo with Expanded Radius */}
+        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md z-10" viewBox="0 0 640 640">
           <circle
-            cx="260"
-            cy="260"
+            cx="320"
+            cy="320"
             r={radius}
             fill="transparent"
             stroke="currentColor"
-            strokeWidth="14"
+            strokeWidth="16"
             className="text-neutral-900/90"
           />
           <circle
-            cx="260"
-            cy="260"
+            cx="320"
+            cy="320"
             r={radius}
             fill="transparent"
-            strokeWidth="16"
+            strokeWidth="18"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
@@ -1009,7 +1005,7 @@ export default function WorkoutEngine({ onBroadcast, incomingState, isProjectorV
           />
         </svg>
 
-        {/* Doubled Workout Timer Text Size */}
+        {/* Large Workout Timer Display */}
         <div className={`relative z-20 font-black tracking-tight select-none font-mono transition-colors duration-300 pointer-events-none ${
           isProjectorView 
             ? 'text-[15rem] sm:text-[20rem] md:text-[26rem] lg:text-[32rem]' 
